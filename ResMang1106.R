@@ -119,7 +119,7 @@ for (wy in 1:21){
     if (any(forecast$doy == day && forecast$wy == yrs[wy])){
       volF <- forecast[(forecast$doy == day & forecast$wy == yrs[wy]),1]
     }
-    else{volF <- sum(Qin[day:jul])*f2v}
+    else{volF <- sum(Qin[day:jul])*f2v} #otherwise use the actual inflow data - UPDATE this w daily forecast timeseries
     
     maxSday<- resStor(volF, day) 
     maxS[day] <- maxAF-maxSday$stor #max storage today given the whole years inflow
@@ -161,7 +161,8 @@ for (wy in 1:21){
 }
 
 #enter iterative loop until it works ----
-spd=5 #number of days to average values over
+spd=15 #number of days to average values over 
+#bumping this up this high definitely helped mediate high flows - but the storage values are all over the place
 
 for (wy in 1:21){
   counter=0
