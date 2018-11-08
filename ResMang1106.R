@@ -1,6 +1,6 @@
 #import, sum storage for Anderson Ranch, Arrowrock, and Lucky Peak Reservoirs
-#setwd("~/Dropbox/BSU/R/WaterActors/ToyModels/ReservoirModeling")
-setwd("D:/Dropbox/BSU/R/WaterActors/ToyModels/ReservoirModeling")
+setwd("~/Documents/GitRepos/ReservoirModeling")
+#setwd("D:/Dropbox/BSU/R/WaterActors/ToyModels/ReservoirModeling")
 
 # Import reservoir data ------
 # missing data was replaced by average of bracketing values
@@ -15,16 +15,6 @@ res$WY[res$M <10]= res$Y[res$M <10]
 res$WY[res$M >= 10] = res$Y[res$M >= 10]+1
 lowell<-read.csv("Data/lowell_data.csv")
 res$low<-lowell$low_af
-forecast<-read.csv("Data/LP_coordinatedForecasts.csv")
-
-#run for DOY 1: July 31st subset from full timeseries -----
-jul=196 #change to 212 #july 31st once update fcVol csv
-reps <-100
-idx<-which(res$doy >= 1 & res$doy <= jul)
-rows<- length(idx)
-FC<- data.frame(res$doy[idx],res$WY[idx], res$totAF[idx], res$in_unreg[idx], res$qo[idx])
-colnames(FC)<-c("doy", "WY", "AF", "Q", "Qo")
-yrs<- 1998:2018
 
 # load Rule Curve data --------
 fv<-read.csv("Data/ForecastVol.csv")
@@ -42,6 +32,27 @@ f2v<-24*60*60*.0000229569
 minQ<-240
 maxAF<-1010188
 minS<-  41000 +11630+ 28767 #total inactive capacity AND, ARK, LP
+
+#run for DOY 1: July 31st subset from full timeseries -----
+jul=196 #change to 212 #july 31st once update fcVol csv
+reps <-100
+idx<-which(res$doy >= 1 & res$doy <= jul)
+rows<- length(idx)
+FC<- data.frame(res$doy[idx],res$WY[idx], res$totAF[idx], res$in_unreg[idx], res$qo[idx])
+colnames(FC)<-c("doy", "WY", "AF", "Q", "Qo")
+yrs<- 1998:2018
+
+#calculate daily forecast values
+forecast<-read.csv("Data/LP_coordinatedForecasts.csv")
+volF<-vector(length = nrow(FC))
+for (i in 1:nrow(FC)){
+  if (any(forecast$wy == FC$WY[i] & forecast$doy == FC$doy[i])){
+    ii=which(forecast$wy == FC$WY[i] & forecast$doy == FC$doy[i])
+    volF[i] <- forecast$ForecastVol[ii]
+  } else{volF[i] <- volF[i-1] - FC$Q[i-1]*f2v}
+}
+FC<-cbind(FC, volF)
+
 
 #find the index of the first doy
 doy1<-matrix(data=NA, ncol=1, nrow=21)
@@ -115,12 +126,7 @@ for (wy in 1:21){
   Qin<- FC$Q[FC$WY == yrs[wy]]
 #### determine reservoir storage and discharge for any given day of year
   for (day in 1:jul){
-    # use Coordinated forecast on 1st of every month
-    if (any(forecast$doy == day && forecast$wy == yrs[wy])){
-      volF <- forecast[(forecast$doy == day & forecast$wy == yrs[wy]),1]
-    }
-    else{volF <- sum(Qin[day:jul])*f2v} #otherwise use the actual inflow data - UPDATE this w daily forecast timeseries
-    
+    volF= FC$volF[FC$WY == yrs[wy] & FC$doy == day]
     maxSday<- resStor(volF, day) 
     maxS[day] <- maxAF-maxSday$stor #max storage today given the whole years inflow
     
@@ -148,7 +154,8 @@ for (wy in 1:21){
   FC$stor[FC$WY == yrs[wy]]<-stor[,]
   FC$maxS[FC$WY == yrs[wy]]<-maxS[,]
   FC$Qmin[FC$WY == yrs[wy]]<-QminAP[,]
-  
+}
+
   plot(maxS, type='l', ylim=c(300000, 1010200))
   lines(stor, col='orange')
   lines(FC$AF[FC$WY == yrs[wy]], col='green') 
@@ -158,10 +165,10 @@ for (wy in 1:21){
   lines(qlim[,2], type='l', lty=3, col='grey17')
   lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
 
-}
+
 
 #enter iterative loop until it works ----
-spd=15 #number of days to average values over 
+spd=7 #number of days to average values over 
 #bumping this up this high definitely helped mediate high flows - but the storage values are all over the place
 
 for (wy in 1:21){
