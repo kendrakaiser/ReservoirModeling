@@ -51,8 +51,9 @@ for (i in 1:nrow(FC)){
     volF[i] <- forecast$ForecastVol[ii]
   } else{volF[i] <- volF[i-1] - FC$Q[i-1]*f2v}
 }
-FC<-cbind(FC, volF)
 
+FC<-cbind(FC, volF)
+FC$volF[FC$volF < 0] <- 0
 
 #find the index of the first doy
 doy1<-matrix(data=NA, ncol=1, nrow=21)
@@ -127,7 +128,10 @@ for (wy in 1:21){
 #### determine reservoir storage and discharge for any given day of year
   for (day in 1:jul){
     volF= FC$volF[FC$WY == yrs[wy] & FC$doy == day]
-    maxSday<- resStor(volF, day) 
+    if (volF >= 0){
+      maxSday<- resStor(volF, day) 
+    } else {maxSday$stor <- maxAF}
+    
     maxS[day] <- maxAF-maxSday$stor #max storage today given the whole years inflow
     
     #Determine April 1 FC space and Qmin
