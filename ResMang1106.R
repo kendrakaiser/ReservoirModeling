@@ -221,7 +221,6 @@ for (wy in 1:21){
 
 datelab<-seq(as.Date("1997-01-01"), as.Date("1997-07-31"), by="1 day")
 
-
 for (wy in 1:21){
   plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
   lines(FC$storN[FC$WY == yrs[wy]], col='orange')
