@@ -137,7 +137,7 @@ for (wy in 1:21){
     
     maxS[day] <- maxAF-maxSday$stor #max storage today given the whole years inflow
     
-    #Determine April 1 FC space and Qmin
+    #Determine April 1 FC space and Qmin ##Update to make this happen daily - using same prj for 15 days
     if (any(prj$start == day)){
       ix= which(any(prj$start == day))
       volFmar<- volF*prj$b[ix] + prj$c[ix]
