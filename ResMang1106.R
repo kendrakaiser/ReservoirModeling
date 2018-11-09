@@ -89,17 +89,20 @@ changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to b
     dS[day] <- maxS - stor[day] - (Qin[day]*f2v) #calculate change of volume of water in the reservoir
     qo[day] <- -dS[day]*v2f
   } else {
-    qo[day] <- Qmin ##this is tricky bc then the discharge will always be high
+    qo[day] <- Qmin ##this is tricky bc only for a day ...
     dS[day] <- (Qin[day]- Qmin)*f2v
   } 
-  #Ramping rate is +/- 500 cfs per day
-  if (day > 1 && qo[day] < qo[day-1] - 500){
-    qo[day] <- qo[day-1] - 500
-    dS[day] <- (Qin[day]-qo[day])*f2v 
-  } else if (day >1 && qo[day] > qo[day-1] + 500){
-    qo[day] <- qo[day-1] + 500
-    dS[day] <- (Qin[day]-qo[day])*f2v 
+  #Ramping rate is +/- 500 cfs per day  --> ∆ed this so it distributes the water over the previous days
+  if (day > 10 && qo[day] < qo[day-1] - 500){
+    dD <- day + round((qo[day-1] - qo[day])/500) 
+    qo[dD:day] <- qo[dD:day] + 500
+    dS[dD:day] <- (Qin[dD:day]-qo[dD:day])*f2v 
+  } else if (day >10 && qo[day] > qo[day-1] + 500){
+    dD <- day - round((qo[day-1] - qo[day])/500) #days to distribute water over
+    qo[dD:day] <- qo[dD:day]+500
+    dS[dD:day] <- (Qin[dD:day]-qo[dD:day])*f2v 
   } else{}
+  
   if (stor[day] <= minS){
     qo[day] <- minQ
     dS[day] <- minQ*f2v 
@@ -172,6 +175,7 @@ for (wy in 1:21){
 
 
 #enter iterative loop until it works ----
+  
 spd=7 #number of days to average values over 
 #bumping this up this high definitely helped mediate high flows - but the storage values are all over the place
 
