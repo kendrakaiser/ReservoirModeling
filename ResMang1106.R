@@ -188,12 +188,13 @@ for (wy in 1:21){
   while ((any(cy$qo > qlim[1:196,2])) && counter < 200 | ((any(cy$stor > cy$maxS)) && counter < 200)) {
     counter= counter+1
     print(counter)
-    wy
+    
+    #not working ? 
     ifx<- which(cy$stor <= cy$minS)
     dS[ifx] <- (cy$Q[ifx]- minQ)*f2v
     cy$qo[ifx]<- minQ 
     
-    #trying to allow for a faster ramping rate if the storage is going to go over maxS - need to do it better tho
+    #trying to allow for a faster ramping rate if the storage is going to go over maxS - need to do it better?
     if (any(cy$stor > cy$maxS) && counter <2){
       ind<-which(cy$stor > cy$maxS)
       dS[ind]<- dS[ind] - (500*f2v)
@@ -204,12 +205,13 @@ for (wy in 1:21){
     if (any(cy$qo > qlim[1:196,2])){ #find all q>qMax distribute those flows over prior days and update the dS and stor
       ind<-which(cy$qo > qlim[1:196,2])
       id<-min(ind)
-      
+      #something is wrong in here - discharge gets smoothed but storage is unreasonable - something about indexing
       if (id > spd+1){
         cy$qo[((id-spd):id)] <- sum(cy$qo[((id-spd):id)]) / (1+spd)
         dS[((id-spd):id)] <- (cy$Q[((id-spd):id)] - cy$qo[((id-spd):id)]) * f2v 
-        cy$stor[((id-spd):id)]<- cy$stor[((id-spd):id)] + dS[((id-spd):id)]  
-      } else if (id < spd){
+        cy$stor[((id-spd):id)]<- cy$stor[((id-spd):id)] + dS[((id-spd):id)]  #this is the problem ! its summing all of the discharge over that time and adjusting the storage
+        
+      } else if (id < spd){ #trying to deal with the first week of Jan
         cy$qo[(id:(id+(spd*2)))] <- sum(cy$qo[(id:(id+(spd*2)))]) / (1+(spd*2))
         dS[(id:(id+(spd*2)))] <- (cy$Q[(id:(id+(spd*2)))] - cy$qo[(id:(id+(spd*2)))]) * f2v
         cy$stor[(id:(id+(spd*2)))]<- cy$stor[(id:(id+(spd*2)))] + dS[(id:(id+(spd*2)))]  
