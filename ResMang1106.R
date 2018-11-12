@@ -24,7 +24,6 @@ fcVol$V2<- as.Date(fcVol$V2, format ="%m/%d/%Y")
 prj<-read.csv("Data/Inflw_prj.csv") #coefficients for projection eqn
 wfc<-read.csv("Data/plate7-2.csv") #winter flood control space
 qlim<- read.csv("Data/MaxQ.csv", header = FALSE) #discharge mins and maxes
-Qpred<-read.csv("Data/Qpred.csv", header= FALSE)
 #conversions from vol to flow (ac-ft to cfs)
 v2f<-43560.000443512/(24*60*60)
 f2v<-24*60*60*.0000229569 
@@ -105,7 +104,7 @@ changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to b
   
   if (stor[day] <= minS){
     qo[day] <- minQ
-    dS[day] <- minQ*f2v 
+    dS[day] <- -minQ*f2v 
   }
   if (day < jul){
     stor[day+1]<-stor[day] + dS[day]  #AF in the reservoir
@@ -133,9 +132,10 @@ for (wy in 1:21){
     volF= FC$volF[FC$WY == yrs[wy] & FC$doy == day]
     if (volF >= 0){
       maxSday<- resStor(volF, day) 
-    } else {maxSday$stor <- maxAF}
+      storD<-maxSday$stor
+    } else {storD <- 0} #updated this
     
-    maxS[day] <- maxAF-maxSday$stor #max storage today given the whole years inflow
+    maxS[day] <- maxAF-storD #max storage today given the whole years inflow
     
     #Determine April 1 FC space and Qmin ##Update to make this happen daily - using same prj for 15 days
     if (any(prj$start == day)){
@@ -150,6 +150,7 @@ for (wy in 1:21){
     
     resS <- changeS(Qin, day, stor, maxS[day], QminAP[day])
     qo[day]<-resS$qo[day]
+    dS[day]<- resS$dS[day]
     
     if (day < jul){
       stor[day+1]<-resS$stor[day+1] #AF in the reservoir
@@ -163,18 +164,19 @@ for (wy in 1:21){
   FC$Qmin[FC$WY == yrs[wy]]<-QminAP[,]
 }
 
-  plot(maxS, type='l', ylim=c(300000, 1010200))
-  lines(stor, col='orange')
+for (wy in 1:21){
+  plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
+  lines(FC$stor[FC$WY == yrs[wy]], col='orange')
   lines(FC$AF[FC$WY == yrs[wy]], col='green') 
   
   #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
-  plot(qo, type='l', lty=3, col='orange', ylim=c(0,16000))
+  plot(FC$qo[FC$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
   lines(qlim[,2], type='l', lty=3, col='grey17')
   lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
+}
 
 
-
-#enter iterative loop until it works ----
+#enter iterative loop to smooth out changes in discharge until it works ----
   
 spd=7 #number of days to average values over 
 #bumping this up this high definitely helped mediate high flows - but the storage values are all over the place
