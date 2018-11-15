@@ -1,6 +1,6 @@
 #import, sum storage for Anderson Ranch, Arrowrock, and Lucky Peak Reservoirs
-setwd("~/Documents/GitRepos/ReservoirModeling")
-#setwd("D:/Dropbox/BSU/R/WaterActors/ToyModels/ReservoirModeling")
+#setwd("~/Documents/GitRepos/ReservoirModeling")
+setwd("D:/Documents/GitRepos/ReservoirModel")
 
 # Import reservoir data ------
 # missing data was replaced by average of bracketing values
@@ -137,16 +137,23 @@ for (wy in 1:21){
     
     maxS[day] <- maxAF-storD #max storage today given the whole years inflow
     
-    #Determine April 1 FC space and Qmin ##Update to make this happen daily - using same prj for 15 days
+    #Determine April 1 FC space and Qmin ##Update to make this happen daily - using weighted avg btw dates
+    #this could be turned into a seperate function?
     if (any(prj$start == day)){
       ix= which(any(prj$start == day))
       volFmar<- volF*prj$b[ix] + prj$c[ix]
-      volFresid <- volF - volFmar
+    } else if (day < 91){
+      ix = which(prj$start < day & prj$end >= day)
+      vol1 = volF*prj$b[ix] + prj$c[ix]
+      vol2 = volF*prj$b[ix+1] + prj$c[ix+1]
+      frac = (day - prj$start[ix])/(prj$end[ix]-prj$start[ix])
+      volFmar <-  frac*vol1 + (1-frac)*vol2
+    } else {volFmar = 0} #if after april 1 then dont subtract any of the forecast
     
-      FCvolAP<- resStor(volFresid, 91) #flood control space required on april 1
-      APmaxS<- maxAF- FCvolAP$stor #max storage on april 1
-      QminAP[day]<- (volF - FCvolAP$stor + volFmar)*v2f/(jul-day+1) #associated  qmin
-    } else {QminAP[day] <- minQ}
+    volFresid <- volF - volFmar
+    FCvolAP<- resStor(volFresid, 91) #flood control space required on april 1
+    APmaxS<- maxAF- FCvolAP$stor #max storage on april 1
+    QminAP[day]<- (volF - FCvolAP$stor + volFmar)*v2f/(jul-day+1) #associated  qmin
     
     resS <- changeS(Qin, day, stor, maxS[day], QminAP[day])
     qo[day]<-resS$qo[day]
