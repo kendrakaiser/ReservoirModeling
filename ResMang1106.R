@@ -1,6 +1,6 @@
 #import, sum storage for Anderson Ranch, Arrowrock, and Lucky Peak Reservoirs
-#setwd("~/Documents/GitRepos/ReservoirModeling")
-setwd("D:/Documents/GitRepos/ReservoirModel")
+setwd("~/Documents/GitRepos/ReservoirModeling")
+#setwd("D:/Documents/GitRepos/ReservoirModel")
 
 #--------------------------------------
 # Import reservoir data 
@@ -146,16 +146,20 @@ minReleaseApril<-function(){
   volF_target30 <- volF*prjAP$b[ix30] + prjAP$c[ix30]
   residual15<- volF-volF_target15
   residual30<- volF- volF_target30
-  ###put in if statement re: only do this when less than x days from end ...
-  FCvol15<-resStor(residual15, day+15)
-  FCvol30<- resStor(residual30, day+30)
-  minEvac15 <- FCvol15$stor - stor[day]
-  minEvac30 <- FCvol30$stor - stor[day]
+ 
+  if (day < jul-30){
+    FCvol30<- resStor(residual30, day+30)
+    minEvac30 <- FCvol30$stor - stor[day]
+    minReleaseVol30 <- minEvac30 + volF_target30
+    q30<-(minReleaseVol30*v2f)/(jul-day+1) 
+  } else {q30 <- minQ}
+  if (day < jul-15){
+    FCvol15<-resStor(residual15, day+15)
+    minEvac15 <- FCvol15$stor - stor[day]
+    minReleaseVol15 <- minEvac15 + volF_target15
+    q15<-(minReleaseVol15*v2f)/(jul-day+1)
+  } else {q15 <- minQ}
   
-  minReleaseVol15 <- minEvac15 + volF_target15
-  minReleaseVol30 <- minEvac30 + volF_target30
-  q15<-(minReleaseVol15*v2f)/(jul-day+1)
-  q30<-(minReleaseVol30*v2f)/(jul-day+1) 
   Qmin<- max(q15, q30)
   
 }
@@ -168,7 +172,7 @@ resS=matrix(data=NA, nrow = jul, ncol = 1)
 stor=matrix(data=NA, nrow = jul, ncol = 1)
 maxS=matrix(data=NA, nrow = jul, ncol = 1)
 dS=matrix(data=NA, nrow = jul, ncol = 1)
-QminAP=matrix(data=NA, nrow = jul, ncol = 1)
+minFCq=matrix(data=NA, nrow = jul, ncol = 1)
 qo=matrix(data=NA, nrow = jul, ncol = 1)
 
 
@@ -193,16 +197,16 @@ for (wy in 1:21){
     
     #Determine Qmin 
     if (day < 91){
-      minFCq<-minRelease()
+      minFCq[day]<-minRelease()
     } else {
-      minFCq<-minReleaseApril()
+      minFCq[day]<-minReleaseApril()
     }
     
-    if (minFCq <= minQ){
-      minFCq <- minQ
+    if (minFCq[day] <= minQ){
+      minFCq[day] <- minQ
     }
-    
-    resS <- changeS(Qin, day, stor, maxS[day], minFCq)
+  
+    resS <- changeS(Qin, day, stor, maxS[day], minFCq[day])
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
     
@@ -215,9 +219,9 @@ for (wy in 1:21){
   FC$qo[FC$WY == yrs[wy]]<-qo[,]
   FC$stor[FC$WY == yrs[wy]]<-stor[,]
   FC$maxS[FC$WY == yrs[wy]]<-maxS[,]
-  FC$Qmin[FC$WY == yrs[wy]]<-QminAP[,]
+  FC$Qmin[FC$WY == yrs[wy]]<-minFCq[,]
 }
-
+#plot the initial results
 for (wy in 1:21){
   plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
   lines(FC$stor[FC$WY == yrs[wy]], col='orange')
@@ -229,28 +233,52 @@ for (wy in 1:21){
   lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
 }
 
-
-#enter iterative loop to smooth out changes in discharge until it works ----
+#------------------------------
+#enter iterative loop to impose discahrge limits and decrease daily variability until it works #------------------------------
   
 spd=7 #number of days to average values over 
-#bumping this up this high definitely helped mediate high flows - but the storage values are all over the place
 
-for (wy in 1:21){
+for (wy in 1:21){ #this is all just a mess o stuf right now...
   counter=0
   print(wy)
   
   cy<-FC[FC$WY == yrs[wy],]
-  
-  while ((any(cy$qo > qlim[1:196,2])) && counter < 200 | ((any(cy$stor > cy$maxS)) && counter < 200)) {
+  qqlim=qlim[1:196,2]
+  while ((any(cy$qo > qlim[1:196,2])) && counter < 1000 | ((any(cy$stor > cy$maxS)) && counter < 1000)) {
     counter= counter+1
     print(counter)
     
-    #not working ? 
-    ifx<- which(cy$stor <= cy$minS)
-    dS[ifx] <- (cy$Q[ifx]- minQ)*f2v
-    cy$qo[ifx]<- minQ 
+  #this just forces any day where Q goes over the limit to be at the limit and updates storage 
+    cy<-FC[FC$WY == yrs[wy],]
+    ind<-which(cy$qo > qqlim)
+    id<-ind[1]
+    #qDist<-cy$qo[ind] - qqlim[ind]
+    indL<-which(cy$qo< qqlim)
+    for (i in id:length(indL)){
+     if (cy$qo[i] > qqlim[i]){
+        cy$qo[id] = cy$qo[id] - (qqlim[indL[i]]-cy$qo[indL[i]])
+        cy$stor[indL[i]]= cy$stor[indL[i]] - (qqlim[indL[i]]-cy$qo[indL[i]])*f2v
+        cy$qo[indL[i]] = qqlim[indL[i]]
+        
+    }}
     
-    #trying to allow for a faster ramping rate if the storage is going to go over maxS - need to do it better?
+    plot(cy$qo[cy$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
+    lines(qlim[,2], type='l', lty=3, col='grey17')
+    lines(cy$Qo[cy$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
+    
+    
+    cy$qo[ind] = qqlim[ind]
+    dS[ind] <- (cy$Q[ind] - cy$qo[ind]) * f2v 
+    cy$stor[ind]<- cy$stor[ind-1] + dS[ind] 
+    
+    
+    
+   #this is one way to keep it from dropping way below storage min, but more of a bandaid 
+    ifx<- which(cy$stor <= minS)
+    dS[ifx] <- (cy$Q[ifx]- minQ)*f2v
+    cy$qoN[ifx]<- minQ 
+    
+    #trying to allow for a faster ramping rate if the storage is going to go over maxS 
     if (any(cy$stor > cy$maxS) && counter <2){
       ind<-which(cy$stor > cy$maxS)
       dS[ind]<- dS[ind] - (500*f2v)
@@ -258,14 +286,16 @@ for (wy in 1:21){
       cy$stor[ind]<-cy$stor[ind] - 500*f2v
     }
     
+    
+    #this was the first attempt at smoothing - the week prior ...
     if (any(cy$qo > qlim[1:196,2])){ #find all q>qMax distribute those flows over prior days and update the dS and stor
-      ind<-which(cy$qo > qlim[1:196,2])
+      
       id<-min(ind)
-      #something is wrong in here - discharge gets smoothed but storage is unreasonable - something about indexing
+ #something is wrong in here - discharge gets smoothed but storage is unreasonable - something about indexing
       if (id > spd+1){
         cy$qo[((id-spd):id)] <- sum(cy$qo[((id-spd):id)]) / (1+spd)
         dS[((id-spd):id)] <- (cy$Q[((id-spd):id)] - cy$qo[((id-spd):id)]) * f2v 
-        cy$stor[((id-spd):id)]<- cy$stor[((id-spd):id)] + dS[((id-spd):id)]  #this is the problem ! its summing all of the discharge over that time and adjusting the storage
+        cy$stor[((id-spd):id)]<- cy$stor[((id-spd):id)] + dS[((id-spd):id)]  
         
       } else if (id < spd){ #trying to deal with the first week of Jan
         cy$qo[(id:(id+(spd*2)))] <- sum(cy$qo[(id:(id+(spd*2)))]) / (1+(spd*2))
@@ -292,4 +322,16 @@ for (wy in 1:21){
   plot(FC$qoN[FC$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
   lines(qlim[,2], type='l', lty=3, col='grey17')
   lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
+}
+
+
+for (wy in 20){
+  plot(cy$maxS[cy$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
+  lines(cy$stor[cy$WY == yrs[wy]], col='orange')
+  lines(cy$AF[cy$WY == yrs[wy]], col='green') 
+  
+  #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
+  plot(cy$qo[cy$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
+  lines(qlim[,2], type='l', lty=3, col='grey17')
+  lines(cy$Qo[cy$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
 }
