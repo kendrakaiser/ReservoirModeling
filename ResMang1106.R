@@ -2,7 +2,9 @@
 #setwd("~/Documents/GitRepos/ReservoirModeling")
 setwd("D:/Documents/GitRepos/ReservoirModel")
 
-# Import reservoir data ------
+#--------------------------------------
+# Import reservoir data 
+#--------------------------------------
 # missing data was replaced by average of bracketing values
 res<-read.csv("Data/BRB_reservoir_data_1997-2018_noleap.csv")
 res$Date <-as.Date(res$Date, format ="%m/%d/%y")
@@ -22,6 +24,7 @@ fcVol<-read.csv("Data/FloodControlVol.csv", header=FALSE) #DOY, date, volumes
 fcVol[,3:36]<- fcVol[,3:36]*1000 #bc flood control space is in 1000 ac-ft see plate 7-1 in the WCM
 fcVol$V2<- as.Date(fcVol$V2, format ="%m/%d/%Y")
 prj<-read.csv("Data/Inflw_prj.csv") #coefficients for projection eqn
+prjAP<-read.csv("Data/Inflw_prjAPril1.csv") #coefficients for projection eqn after April 1
 wfc<-read.csv("Data/plate7-2.csv") #winter flood control space
 qlim<- read.csv("Data/MaxQ.csv", header = FALSE) #discharge mins and maxes
 #conversions from vol to flow (ac-ft to cfs)
@@ -32,7 +35,7 @@ minQ<-240
 maxAF<-1010188
 minS<-  41000 +11630+ 28767 #total inactive capacity AND, ARK, LP
 
-#run for DOY 1: July 31st subset from full timeseries -----
+#subset (DOY 1: July 31st) from full timeseries -----
 jul=196 #change to 212 #july 31st once update fcVol csv
 reps <-100
 idx<-which(res$doy >= 1 & res$doy <= jul)
@@ -60,9 +63,12 @@ for (wy in 1:21){
   doy1[wy]<- which(FC$WY == yrs[wy] & FC$doy == 1)
 }
 
-#REQUIRED storage - lookup day of year, inflow volume ####
-### plate 7-1 and plate 7-3 ### ----
-#Needs sum of timeseries
+##--------------------------------------
+#       DEFINE FUNCTIONS 
+##--------------------------------------
+
+# REQUIRED storage - lookup day of year, inflow volume 
+# plate 7-1 and plate 7-3 - Needs sum of timeseries
 resStor<- function(sumQin,doy){ 
  
   fvol<-round(sumQin/1000000, digits=1)
@@ -81,6 +87,7 @@ resStor<- function(sumQin,doy){
   return(outList)
 } 
 
+# CHANGE STORAGE - based on current storage, minimum discharge and ramping rates
 #needs whole timeseries and maxS of any given day 
 changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to be here
 
@@ -88,7 +95,7 @@ changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to b
     dS[day] <- maxS - stor[day] - (Qin[day]*f2v) #calculate change of volume of water in the reservoir
     qo[day] <- -dS[day]*v2f
   } else {
-    qo[day] <- Qmin ##this is tricky bc only for a day ...
+    qo[day] <- Qmin 
     dS[day] <- (Qin[day]- Qmin)*f2v
   } 
   #Ramping rate is +/- 500 cfs per day  --> ∆ed this so it distributes the water over the previous days
@@ -114,7 +121,49 @@ changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to b
   return(outlist)
 }
 
-#### set up blank matricies -----
+#determine minimum daily release before April 1
+minRelease<- function(){
+  ix= which(prj$start <= day & prj$end >= day)
+  vol1 = volF*prj$b[ix] + prj$c[ix]
+  if (prj$start[ix] != day){
+    vol2 = volF*prj$b[ix+1] + prj$c[ix+1]
+    frac = (day - prj$start[ix])/(prj$end[ix]-prj$start[ix])
+    volFmar <-  frac*vol1 + (1-frac)*vol2
+  } else {volFmar = vol1}
+  
+  volFresid <- volF - volFmar
+  FCvolAP<- resStor(volFresid, 91) #flood control space required on april 1
+  minEvac<- FCvolAP$stor - stor[day] #minimum evaculation btw today and April 1
+  minReleaseVol <- minEvac+volFmar
+  Qmin<- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
+}
+
+#determine minimum daily release after April 1
+minReleaseApril<-function(){
+  ix30 = findInterval(day, prjAP$doy)
+  ix15=ix30-1
+  volF_target15 <- volF*prjAP$b[ix15] + prjAP$c[ix15]
+  volF_target30 <- volF*prjAP$b[ix30] + prjAP$c[ix30]
+  residual15<- volF-volF_target15
+  residual30<- volF- volF_target30
+  ###put in if statement re: only do this when less than x days from end ...
+  FCvol15<-resStor(residual15, day+15)
+  FCvol30<- resStor(residual30, day+30)
+  minEvac15 <- FCvol15$stor - stor[day]
+  minEvac30 <- FCvol30$stor - stor[day]
+  
+  minReleaseVol15 <- minEvac15 + volF_target15
+  minReleaseVol30 <- minEvac30 + volF_target30
+  q15<-(minReleaseVol15*v2f)/(jul-day+1)
+  q30<-(minReleaseVol30*v2f)/(jul-day+1) 
+  Qmin<- max(q15, q30)
+  
+}
+
+
+#-------------------------------------------------------------
+#   set up blank matricies 
+#------------------------------------------------------------
 resS=matrix(data=NA, nrow = jul, ncol = 1)
 stor=matrix(data=NA, nrow = jul, ncol = 1)
 maxS=matrix(data=NA, nrow = jul, ncol = 1)
@@ -122,14 +171,19 @@ dS=matrix(data=NA, nrow = jul, ncol = 1)
 QminAP=matrix(data=NA, nrow = jul, ncol = 1)
 qo=matrix(data=NA, nrow = jul, ncol = 1)
 
+
+#---------------------------------------------------------------
+#   determine change in storage and outflow for any day of year
+#---------------------------------------------------------------
 #select Qin from matrix or array? - turn into funtion
 
 for (wy in 1:21){
-  stor[1]<-FC$AF[doy1[wy]]
+  stor[1]<-FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
   Qin<- FC$Q[FC$WY == yrs[wy]]
-#### determine reservoir storage and discharge for any given day of year
+
   for (day in 1:jul){
-    volF= FC$volF[FC$WY == yrs[wy] & FC$doy == day]
+    volF= FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow
+    
     if (volF >= 0){
       maxSday<- resStor(volF, day) 
       storD<-maxSday$stor
@@ -137,25 +191,18 @@ for (wy in 1:21){
     
     maxS[day] <- maxAF-storD #max storage today given the whole years inflow
     
-    #Determine April 1 FC space and Qmin ##Update to make this happen daily - using weighted avg btw dates
-    #this could be turned into a seperate function?
-    if (any(prj$start == day)){
-      ix= which(any(prj$start == day))
-      volFmar<- volF*prj$b[ix] + prj$c[ix]
-    } else if (day < 91){
-      ix = which(prj$start < day & prj$end >= day)
-      vol1 = volF*prj$b[ix] + prj$c[ix]
-      vol2 = volF*prj$b[ix+1] + prj$c[ix+1]
-      frac = (day - prj$start[ix])/(prj$end[ix]-prj$start[ix])
-      volFmar <-  frac*vol1 + (1-frac)*vol2
-    } else {volFmar = 0} #if after april 1 then dont subtract any of the forecast
+    #Determine Qmin 
+    if (day < 91){
+      minFCq<-minRelease()
+    } else {
+      minFCq<-minReleaseApril()
+    }
     
-    volFresid <- volF - volFmar
-    FCvolAP<- resStor(volFresid, 91) #flood control space required on april 1
-    APmaxS<- maxAF- FCvolAP$stor #max storage on april 1
-    QminAP[day]<- (volF - FCvolAP$stor + volFmar)*v2f/(jul-day+1) #associated  qmin
+    if (minFCq <= minQ){
+      minFCq <- minQ
+    }
     
-    resS <- changeS(Qin, day, stor, maxS[day], QminAP[day])
+    resS <- changeS(Qin, day, stor, maxS[day], minFCq)
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
     
