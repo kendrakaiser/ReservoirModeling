@@ -92,24 +92,14 @@ resStor<- function(sumQin,doy){
 changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to be here
 
   if (stor[day] >= maxS) {#if S > max AF, change of volume in reservoir
-    dS[day] <- maxS - stor[day] - (Qin[day]*f2v) #calculate change of volume of water in the reservoir
+    dS[day] <- maxS - stor[day] - (Qin[day]*f2v) #calculate ∆ volume of water in the reservoir
     qo[day] <- -dS[day]*v2f
   } else {
     qo[day] <- Qmin 
     dS[day] <- (Qin[day]- Qmin)*f2v
   } 
-  #Ramping rate is +/- 500 cfs per day  --> ∆ed this so it distributes the water over the previous days
-  if (day > 10 && qo[day] < qo[day-1] - 500){
-    dD <- day + round((qo[day-1] - qo[day])/500) 
-    qo[dD:day] <- qo[dD:day] + 500
-    dS[dD:day] <- (Qin[dD:day]-qo[dD:day])*f2v 
-  } else if (day >10 && qo[day] > qo[day-1] + 500){
-    dD <- day - round((qo[day-1] - qo[day])/500) #days to distribute water over
-    qo[dD:day] <- qo[dD:day]+500
-    dS[dD:day] <- (Qin[dD:day]-qo[dD:day])*f2v 
-  } else{}
-  
-  if (stor[day] <= minS){
+
+  if (stor[day] <= minS){ #dont let storage go below the minimum
     qo[day] <- minQ
     dS[day] <- -minQ*f2v 
   }
@@ -164,7 +154,30 @@ minReleaseApril<-function(){
   
 }
 
-
+#Ramping rate is +/- 500 cfs per day  --> distributes the water over following days
+ramprate <- function(qo, stor){
+  for (day in 1:jul){
+  #if (day > 10 && qo[day] < (qo[day-1] - 500)){ #todays qo < 500cfs than yesterdays
+   # dD <- day - round((qo[day] - qo[day-1])/500) #days to distribute water over
+    #  if (dD > jul) {dD=jul}
+    #qo[day] <- qo[day]-500
+    #dS[day] <- Qin[day]- (qo[day]*f2v)
+    #qo[(day+1):dD] <- qo[(day+1):dD] + 500 
+    #dS[(day+1):dD] <- (Qin[(day+1):dD]-qo[(day+1):dD])*f2v 
+#} else if 
+    while (day >10 && qo[day] > (qo[day-1] + 500)){#todays qo > 500cfs than yesterday
+      dD <- day + round((qo[day] - qo[day-1])/500) 
+        if (dD > jul) {dD=jul}
+      qo[day] <- qo[day]-500
+      dS[day] <- Qin[day]- (qo[day]*f2v)
+      qo[(day+1):dD] <- qo[(day+1):dD]+500
+      dS[(day+1):dD] <- (Qin[(day+1):dD]-qo[(day+1):dD])*f2v 
+      stor[day:dD] <- stor[day:dD] + dS[day:dD]
+    } #else{}
+  }
+  outlist<-(list("dS"=dS, "qo"=qo, "stor"=stor))
+  return(outlist) 
+}
 #-------------------------------------------------------------
 #   set up blank matricies 
 #------------------------------------------------------------
@@ -187,11 +200,10 @@ for (wy in 1:21){
 
   for (day in 1:jul){
     volF= FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow
-    
     if (volF >= 0){
       maxSday<- resStor(volF, day) 
       storD<-maxSday$stor
-    } else {storD <- 0} #updated this
+    } else {storD <- 0}
     
     maxS[day] <- maxAF-storD #max storage today given the whole years inflow
     
@@ -201,11 +213,11 @@ for (wy in 1:21){
     } else {
       minFCq[day]<-minReleaseApril()
     }
-    
+    #minimum discharge is 240
     if (minFCq[day] <= minQ){
       minFCq[day] <- minQ
     }
-  
+    
     resS <- changeS(Qin, day, stor, maxS[day], minFCq[day])
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
@@ -214,7 +226,11 @@ for (wy in 1:21){
       stor[day+1]<-resS$stor[day+1] #AF in the reservoir
     }
   }
-
+  
+  for (day in 1:jul){ #this isn't working, bc its not saving output from the while loop?
+    rr=ramprate(qo, stor)
+  }
+  
   #save intial run output ----
   FC$qo[FC$WY == yrs[wy]]<-qo[,]
   FC$stor[FC$WY == yrs[wy]]<-stor[,]
@@ -287,11 +303,10 @@ for (wy in 1:21){ #this is all just a mess o stuf right now...
     }
     
     
-    #this was the first attempt at smoothing - the week prior ...
-    if (any(cy$qo > qlim[1:196,2])){ #find all q>qMax distribute those flows over prior days and update the dS and stor
-      
+    #this was the first attempt at smoothing - by finding all q>qMax and distributing those flows over n prior days and update the dS and stor
+    #but something is wrong in here - discharge gets smoothed but storage is unreasonable - something about indexing
+    if (any(cy$qo > qlim[1:196,2])){ 
       id<-min(ind)
- #something is wrong in here - discharge gets smoothed but storage is unreasonable - something about indexing
       if (id > spd+1){
         cy$qo[((id-spd):id)] <- sum(cy$qo[((id-spd):id)]) / (1+spd)
         dS[((id-spd):id)] <- (cy$Q[((id-spd):id)] - cy$qo[((id-spd):id)]) * f2v 
