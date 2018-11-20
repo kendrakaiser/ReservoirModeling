@@ -156,24 +156,31 @@ minReleaseApril<-function(){
 
 #Ramping rate is +/- 500 cfs per day  --> distributes the water over following days
 ramprate <- function(qo, stor){
+
   for (day in 1:jul){
-  #if (day > 10 && qo[day] < (qo[day-1] - 500)){ #todays qo < 500cfs than yesterdays
-   # dD <- day - round((qo[day] - qo[day-1])/500) #days to distribute water over
-    #  if (dD > jul) {dD=jul}
-    #qo[day] <- qo[day]-500
-    #dS[day] <- Qin[day]- (qo[day]*f2v)
-    #qo[(day+1):dD] <- qo[(day+1):dD] + 500 
-    #dS[(day+1):dD] <- (Qin[(day+1):dD]-qo[(day+1):dD])*f2v 
-#} else if 
-    while (day >10 && qo[day] > (qo[day-1] + 500)){#todays qo > 500cfs than yesterday
-      dD <- day + round((qo[day] - qo[day-1])/500) 
-        if (dD > jul) {dD=jul}
-      qo[day] <- qo[day]-500
+    if (day > 10 && qo[day] < (qo[day-1] - 500)){ #todays qo < 500cfs than yesterdays
+      Q=qo[day]
+      qo[day] <- qo[day-1]-500
       dS[day] <- Qin[day]- (qo[day]*f2v)
-      qo[(day+1):dD] <- qo[(day+1):dD]+500
+      Qd<-Q-qo[day]
+      dD <- day + round((Qd)/500) 
+        if (dD > jul) {dD=jul}
+      qo[(day+1):dD] <- qo[(day+1):dD]+ Qd/(round((Qd)/500))
       dS[(day+1):dD] <- (Qin[(day+1):dD]-qo[(day+1):dD])*f2v 
       stor[day:dD] <- stor[day:dD] + dS[day:dD]
-    } #else{}
+  }else if (day >10 && qo[day] > (qo[day-1] + 500)){
+      #todays qo > 500cfs than yesterday
+    #kinda works - line by line, but something is wrong w looping or something
+      Q=qo[day]
+      qo[day] <- qo[day-1]+500
+      dS[day] <- Qin[day]- (qo[day]*f2v)
+      Qd<-Q-qo[day]
+      dD <- day + round((Qd)/500) 
+        if (dD > jul) {dD=jul}
+      qo[(day+1):dD] <- qo[(day+1):dD]+ Qd/(round((Qd)/500))
+      dS[(day+1):dD] <- (Qin[(day+1):dD]-qo[(day+1):dD])*f2v 
+      stor[day:dD] <- stor[day:dD] + dS[day:dD]
+    } else{qo[day]<-qo[day]}
   }
   outlist<-(list("dS"=dS, "qo"=qo, "stor"=stor))
   return(outlist) 
@@ -226,14 +233,13 @@ for (wy in 1:21){
       stor[day+1]<-resS$stor[day+1] #AF in the reservoir
     }
   }
-  
-  for (day in 1:jul){ #this isn't working, bc its not saving output from the while loop?
-    rr=ramprate(qo, stor)
-  }
+
+  rr=ramprate(qo, stor)
+
   
   #save intial run output ----
-  FC$qo[FC$WY == yrs[wy]]<-qo[,]
-  FC$stor[FC$WY == yrs[wy]]<-stor[,]
+  FC$qo[FC$WY == yrs[wy]]<-rr$qo[,]
+  FC$stor[FC$WY == yrs[wy]]<-rr$stor[,]
   FC$maxS[FC$WY == yrs[wy]]<-maxS[,]
   FC$Qmin[FC$WY == yrs[wy]]<-minFCq[,]
 }
