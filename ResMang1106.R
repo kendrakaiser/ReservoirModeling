@@ -234,12 +234,13 @@ for (wy in 1:21){
     }
   }
 
-  rr=ramprate(qo, stor)
+  #rr=ramprate(qo, stor)
+
 
   
   #save intial run output ----
-  FC$qo[FC$WY == yrs[wy]]<-rr$qo[,]
-  FC$stor[FC$WY == yrs[wy]]<-rr$stor[,]
+  FC$qo[FC$WY == yrs[wy]]<-qo[,]   #rr$qo
+  FC$stor[FC$WY == yrs[wy]]<-stor[,]   #rr#stor
   FC$maxS[FC$WY == yrs[wy]]<-maxS[,]
   FC$Qmin[FC$WY == yrs[wy]]<-minFCq[,]
 }
