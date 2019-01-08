@@ -14,7 +14,7 @@ from scipy.stats import truncnorm
 import os
 
 #os.chdir("C:/Users/kendrakaiser/Dropbox/BSU/Python/Data")
-os.chdir("/Users/kek25/Dropbox/BSU/Python/Data")
+os.chdir("/Users/kendrakaiser/Documents/GitRepos/ReservoirModeling/Data")
 doy=pd.read_csv("DOY.csv")
 df =pd.read_csv("BRB_reservoir_data_1997-2018_noleap.csv")
 df['Date'] =pd.to_datetime(df['Date'])
