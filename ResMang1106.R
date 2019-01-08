@@ -95,7 +95,7 @@ changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to b
     dS[day] <- maxS - stor[day] - (Qin[day]*f2v) #calculate ∆ volume of water in the reservoir
     qo[day] <- -dS[day]*v2f
   } else {
-    qo[day] <- Qmin 
+    qo[day] <- Qmin #this is the problem *** move ramping rates here**** some fraction of the previous days discharge 
     dS[day] <- (Qin[day]- Qmin)*f2v
   } 
 
@@ -126,6 +126,8 @@ minRelease<- function(){
   minEvac<- FCvolAP$stor - stor[day] #minimum evaculation btw today and April 1
   minReleaseVol <- minEvac+volFmar
   Qmin<- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
+  
+  ##If statements that constrain for high flows and ramp rates
 }
 
 #determine minimum daily release after April 1
@@ -201,7 +203,7 @@ qo=matrix(data=NA, nrow = jul, ncol = 1)
 #---------------------------------------------------------------
 #select Qin from matrix or array? - turn into funtion
 
-for (wy in 1:21){
+for (wy in 1){
   stor[1]<-FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
   Qin<- FC$Q[FC$WY == yrs[wy]]
 
@@ -225,6 +227,10 @@ for (wy in 1:21){
       minFCq[day] <- minQ
     }
     
+    #min discharge today given forecasted storage in the next n days
+    #add variables for surplus storage and associated Qmin 
+    
+    
     resS <- changeS(Qin, day, stor, maxS[day], minFCq[day])
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
@@ -235,10 +241,8 @@ for (wy in 1:21){
   }
 
   #rr=ramprate(qo, stor)
-
-
   
-  #save intial run output ----
+  #save intial run output ----  # change for debugging - put clear matricies at beginning
   FC$qo[FC$WY == yrs[wy]]<-qo[,]   #rr$qo
   FC$stor[FC$WY == yrs[wy]]<-stor[,]   #rr#stor
   FC$maxS[FC$WY == yrs[wy]]<-maxS[,]
