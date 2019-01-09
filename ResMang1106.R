@@ -103,7 +103,7 @@ minRelease<- function(){
   minReleaseVol <- minEvac+volFmar
   Qmin<- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
   
-  ##If statements that constrain for high flows and ramp rates
+  ##If statements that constrain for high flows and ramp rates?
 }
 
 #determine minimum daily release after April 1
@@ -132,6 +132,34 @@ minReleaseApril<-function(){
   
 }
 
+#evaluate change in storage to prevent going over maxS
+evalS<- function(Qin, day, stor, maxS, Qmin, n){
+  dsdt= (stor[day] - stor[day-n])/n
+  storF = (dsdt*n)+stor[day]
+  
+  if (storF > maxS[day]){
+    dsdtMax= (storF - maxS[day])/n
+    Qnew = Qmin + (dsdtMax*v2f)
+  } else {Qnew = Qmin}
+  
+  qo[day] <- Qnew
+  dS[day] <- -Qnew*f2v 
+  
+  if (stor[day] <= minS){ #dont let storage go below the minimum
+    qo[day] <- minQ
+    dS[day] <- -minQ*f2v 
+  }
+  
+  
+  if (day < jul){
+    stor[day+1]<-stor[day] + dS[day]  #AF in the reservoir
+  }
+  
+  outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo, "day"=day))
+}
+  
+  
+  
 # CHANGE STORAGE - based on current storage, minimum discharge and ramping rates
 #needs whole timeseries and maxS of any given day 
 changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to be here
@@ -148,11 +176,8 @@ changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to b
   #} else if (day > 21 && minFCq[day] <= minFCq[day-1]) {
    # qo[day] <- qo[day-1] - 500 
     #dS[day] <- (Qin[day]- qo[day])*f2v
-  } else if (day > 1) {
-    qo[day] <- qo[day-1] 
-    dS[day] <- (Qin[day]- qo[day])*f2v
   } else {
-    qo[day] <- minQ 
+    qo[day] <- Qmin[day]
     dS[day] <- (Qin[day]- qo[day])*f2v
   }
 
@@ -240,10 +265,8 @@ for (wy in 1){
       minFCq[day] <- minQ
     }
     
-    #min discharge today given forecasted storage in the next n days
-    #add variables for surplus storage and associated Qmin 
     
-    
+  
     resS <- changeS(Qin, day, stor, maxS[day], minFCq)
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
@@ -253,7 +276,7 @@ for (wy in 1){
     }
   }
 
-  #rr=ramprate(qo, stor)
+
   
   #save intial run output ----  # change for debugging - put clear matricies at beginning
   FC$qo[FC$WY == yrs[wy]]<-qo[,]   #rr$qo
@@ -275,104 +298,3 @@ for (wy in 1){
   lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
 }
 
-#------------------------------
-#enter iterative loop to impose discahrge limits and decrease daily variability until it works #------------------------------
-  
-spd=7 #number of days to average values over 
-
-for (wy in 1:21){ #this is all just a mess o stuf right now...
-  counter=0
-  print(wy)
-  
-  cy<-FC[FC$WY == yrs[wy],]
-  qqlim=qlim[1:196,2]
-  while ((any(cy$qo > qlim[1:196,2])) && counter < 1000 | ((any(cy$stor > cy$maxS)) && counter < 1000)) {
-    counter= counter+1
-    print(counter)
-    
-  #this just forces any day where Q goes over the limit to be at the limit and updates storage 
-    cy<-FC[FC$WY == yrs[wy],]
-    ind<-which(cy$qo > qqlim)
-    id<-ind[1]
-    #qDist<-cy$qo[ind] - qqlim[ind]
-    indL<-which(cy$qo< qqlim)
-    for (i in id:length(indL)){
-     if (cy$qo[i] > qqlim[i]){
-        cy$qo[id] = cy$qo[id] - (qqlim[indL[i]]-cy$qo[indL[i]])
-        cy$stor[indL[i]]= cy$stor[indL[i]] - (qqlim[indL[i]]-cy$qo[indL[i]])*f2v
-        cy$qo[indL[i]] = qqlim[indL[i]]
-        
-    }}
-    
-    plot(cy$qo[cy$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
-    lines(qlim[,2], type='l', lty=3, col='grey17')
-    lines(cy$Qo[cy$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
-    
-    
-    cy$qo[ind] = qqlim[ind]
-    dS[ind] <- (cy$Q[ind] - cy$qo[ind]) * f2v 
-    cy$stor[ind]<- cy$stor[ind-1] + dS[ind] 
-    
-    
-    
-   #this is one way to keep it from dropping way below storage min, but more of a bandaid 
-    ifx<- which(cy$stor <= minS)
-    dS[ifx] <- (cy$Q[ifx]- minQ)*f2v
-    cy$qoN[ifx]<- minQ 
-    
-    #trying to allow for a faster ramping rate if the storage is going to go over maxS 
-    if (any(cy$stor > cy$maxS) && counter <2){
-      ind<-which(cy$stor > cy$maxS)
-      dS[ind]<- dS[ind] - (500*f2v)
-      cy$qo[ind]<- cy$qo[ind] + 500
-      cy$stor[ind]<-cy$stor[ind] - 500*f2v
-    }
-    
-    
-    #this was the first attempt at smoothing - by finding all q>qMax and distributing those flows over n prior days and update the dS and stor
-    #but something is wrong in here - discharge gets smoothed but storage is unreasonable - something about indexing
-    if (any(cy$qo > qlim[1:196,2])){ 
-      id<-min(ind)
-      if (id > spd+1){
-        cy$qo[((id-spd):id)] <- sum(cy$qo[((id-spd):id)]) / (1+spd)
-        dS[((id-spd):id)] <- (cy$Q[((id-spd):id)] - cy$qo[((id-spd):id)]) * f2v 
-        cy$stor[((id-spd):id)]<- cy$stor[((id-spd):id)] + dS[((id-spd):id)]  
-        
-      } else if (id < spd){ #trying to deal with the first week of Jan
-        cy$qo[(id:(id+(spd*2)))] <- sum(cy$qo[(id:(id+(spd*2)))]) / (1+(spd*2))
-        dS[(id:(id+(spd*2)))] <- (cy$Q[(id:(id+(spd*2)))] - cy$qo[(id:(id+(spd*2)))]) * f2v
-        cy$stor[(id:(id+(spd*2)))]<- cy$stor[(id:(id+(spd*2)))] + dS[(id:(id+(spd*2)))]  
-      }
-    }
-  }
-  
-  FC$qoN[FC$WY == yrs[wy]]<- cy$qo
-  FC$storN[FC$WY == yrs[wy]]<- cy$stor
-  
-}
-
-
-datelab<-seq(as.Date("1997-01-01"), as.Date("1997-07-31"), by="1 day")
-
-for (wy in 1:21){
-  plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
-  lines(FC$storN[FC$WY == yrs[wy]], col='orange')
-  lines(FC$AF[FC$WY == yrs[wy]], col='green') 
-  
-  #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
-  plot(FC$qoN[FC$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
-  lines(qlim[,2], type='l', lty=3, col='grey17')
-  lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
-}
-
-
-for (wy in 20){
-  plot(cy$maxS[cy$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
-  lines(cy$stor[cy$WY == yrs[wy]], col='orange')
-  lines(cy$AF[cy$WY == yrs[wy]], col='green') 
-  
-  #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
-  plot(cy$qo[cy$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
-  lines(qlim[,2], type='l', lty=3, col='grey17')
-  lines(cy$Qo[cy$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
-}
