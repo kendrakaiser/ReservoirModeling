@@ -134,28 +134,39 @@ minReleaseApril<-function(){
 
 #evaluate change in storage to prevent going over maxS
 evalS<- function(Qin, day, stor, maxS, Qmin, n){
+  
+  if (day > n+1){
   dsdt= (stor[day] - stor[day-n])/n
-  storF = (dsdt*n)+stor[day]
+  storF[day] = (dsdt*n)+stor[day]
   
-  if (storF > maxS[day]){
-    dsdtMax= (storF - maxS[day])/n
-    Qnew = Qmin + (dsdtMax*v2f)
-  } else {Qnew = Qmin}
-  
+    if (storF[day] >= maxS){
+      dsdtMax= (storF[day] - maxS)/n
+      Qnew = Qmin[day] + (dsdtMax*v2f)
+    } else {Qnew = Qmin[day]}
+
   qo[day] <- Qnew
-  dS[day] <- -Qnew*f2v 
+  
+  } else {
+    qo[day] <- Qmin[day]
+  }
+  
+  if (qo[day] > qo[day-1]+500 && day > 2){
+    qo[day] = qo[day-1]+500
+  } else if (qo[day] < qo[day-1]-500 && day > 2){
+    qo[day] = qo[day-1]-500}
+  
+  dS[day] <- (Qin[day]- qo[day])*f2v
   
   if (stor[day] <= minS){ #dont let storage go below the minimum
     qo[day] <- minQ
     dS[day] <- -minQ*f2v 
   }
   
-  
   if (day < jul){
     stor[day+1]<-stor[day] + dS[day]  #AF in the reservoir
   }
   
-  outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo, "day"=day))
+  outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo, "day"=day, "storF"=storF))
 }
   
   
@@ -205,10 +216,10 @@ ramprate <- function(qo, stor){
       Qd<-Q-qo[day]
       dD <- day + round((Qd)/500) 
         if (dD > jul) {dD=jul}
-      qo[(day+1):dD] <- qo[(day+1):dD]+ Qd/(round((Qd)/500))
-      dS[(day+1):dD] <- (Qin[(day+1):dD]-qo[(day+1):dD])*f2v 
-      stor[day:dD] <- stor[day:dD] + dS[day:dD]
-  }else if (day >10 && qo[day] > (qo[day-1] + 500)){
+          qo[(day+1):dD] <- qo[(day+1):dD]+ Qd/(round((Qd)/500))
+          dS[(day+1):dD] <- (Qin[(day+1):dD]-qo[(day+1):dD])*f2v 
+          stor[day:dD] <- stor[day:dD] + dS[day:dD]
+    } else if (day >10 && qo[day] > (qo[day-1] + 500)){
       #todays qo > 500cfs than yesterday
     #kinda works - line by line, but something is wrong w looping or something
       Q=qo[day]
@@ -217,9 +228,9 @@ ramprate <- function(qo, stor){
       Qd<-Q-qo[day]
       dD <- day + round((Qd)/500) 
         if (dD > jul) {dD=jul}
-      qo[(day+1):dD] <- qo[(day+1):dD]+ Qd/(round((Qd)/500))
-      dS[(day+1):dD] <- (Qin[(day+1):dD]-qo[(day+1):dD])*f2v 
-      stor[day:dD] <- stor[day:dD] + dS[day:dD]
+          qo[(day+1):dD] <- qo[(day+1):dD]+ Qd/(round((Qd)/500))
+          dS[(day+1):dD] <- (Qin[(day+1):dD]-qo[(day+1):dD])*f2v 
+          stor[day:dD] <- stor[day:dD] + dS[day:dD]
     } else{qo[day]<-qo[day]}
   }
   outlist<-(list("dS"=dS, "qo"=qo, "stor"=stor))
@@ -234,6 +245,7 @@ maxS=matrix(data=NA, nrow = jul, ncol = 1)
 dS=matrix(data=NA, nrow = jul, ncol = 1)
 minFCq=matrix(data=NA, nrow = jul, ncol = 1)
 qo=matrix(data=NA, nrow = jul, ncol = 1)
+storF=matrix(data=NA, nrow = jul, ncol = 1)
 
 
 #---------------------------------------------------------------
@@ -267,9 +279,10 @@ for (wy in 1){
     
     
   
-    resS <- changeS(Qin, day, stor, maxS[day], minFCq)
+    resS <- evalS(Qin, day, stor, maxS[day], minFCq, 5)
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
+    storF[day]<-resS$storF[day]
     
     if (day < jul){
       stor[day+1]<-resS$stor[day+1] #AF in the reservoir
@@ -283,7 +296,10 @@ for (wy in 1){
   FC$stor[FC$WY == yrs[wy]]<-stor[,]   #rr#stor
   FC$maxS[FC$WY == yrs[wy]]<-maxS[,]
   FC$Qmin[FC$WY == yrs[wy]]<-minFCq[,]
+  FC$storF[FC$WY == yrs[wy]]<-storF[,]
+  
 }
+
 
 
 #plot the initial results
