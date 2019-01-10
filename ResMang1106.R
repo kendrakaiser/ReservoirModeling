@@ -150,10 +150,15 @@ evalS<- function(Qin, day, stor, maxS, Qmin, n){
     qo[day] <- Qmin[day]
   }
   
+  #if the calculated discharge is greater than +/- 500 set it to +/- 500
   if (qo[day] > qo[day-1]+500 && day > 2){
     qo[day] = qo[day-1]+500
   } else if (qo[day] < qo[day-1]-500 && day > 2){
     qo[day] = qo[day-1]-500}
+  
+  #if S > maxS, change of volume in reservoir
+  if (stor[day] >= maxS) {
+    qo[day] <- qo[day-1] + 500}
   
   dS[day] <- (Qin[day]- qo[day])*f2v
   
@@ -205,37 +210,6 @@ changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to b
 }
 
 
-#Ramping rate is +/- 500 cfs per day  --> distributes the water over following days
-ramprate <- function(qo, stor){
-
-  for (day in 1:jul){
-    if (day > 10 && qo[day] < (qo[day-1] - 500)){ #todays qo < 500cfs than yesterdays
-      Q=qo[day]
-      qo[day] <- qo[day-1]-500
-      dS[day] <- Qin[day]- (qo[day]*f2v)
-      Qd<-Q-qo[day]
-      dD <- day + round((Qd)/500) 
-        if (dD > jul) {dD=jul}
-          qo[(day+1):dD] <- qo[(day+1):dD]+ Qd/(round((Qd)/500))
-          dS[(day+1):dD] <- (Qin[(day+1):dD]-qo[(day+1):dD])*f2v 
-          stor[day:dD] <- stor[day:dD] + dS[day:dD]
-    } else if (day >10 && qo[day] > (qo[day-1] + 500)){
-      #todays qo > 500cfs than yesterday
-    #kinda works - line by line, but something is wrong w looping or something
-      Q=qo[day]
-      qo[day] <- qo[day-1]+500
-      dS[day] <- Qin[day]- (qo[day]*f2v)
-      Qd<-Q-qo[day]
-      dD <- day + round((Qd)/500) 
-        if (dD > jul) {dD=jul}
-          qo[(day+1):dD] <- qo[(day+1):dD]+ Qd/(round((Qd)/500))
-          dS[(day+1):dD] <- (Qin[(day+1):dD]-qo[(day+1):dD])*f2v 
-          stor[day:dD] <- stor[day:dD] + dS[day:dD]
-    } else{qo[day]<-qo[day]}
-  }
-  outlist<-(list("dS"=dS, "qo"=qo, "stor"=stor))
-  return(outlist) 
-}
 #-------------------------------------------------------------
 #   set up blank matricies 
 #------------------------------------------------------------
@@ -253,7 +227,7 @@ storF=matrix(data=NA, nrow = jul, ncol = 1)
 #---------------------------------------------------------------
 #select Qin from matrix or array? - turn into funtion
 
-for (wy in 1){
+for (wy in 1:10){
   stor[1]<-FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
   Qin<- FC$Q[FC$WY == yrs[wy]]
 
@@ -266,19 +240,18 @@ for (wy in 1){
     
     maxS[day] <- maxAF-storD #max storage today given the whole years inflow
     
-    #Qmin for storage goals on April 1 and every 15 days after
+    # Min flood control release for storage goals on April 1 and every 15 days after
     if (day < 91){
       minFCq[day]<-minRelease()
     } else {
       minFCq[day]<-minReleaseApril()
     }
     #minimum discharge is 240
-    if (minFCq[day] <= minQ){
+    if (minFCq[day] < minQ){
       minFCq[day] <- minQ
     }
     
     
-  
     resS <- evalS(Qin, day, stor, maxS[day], minFCq, 5)
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
