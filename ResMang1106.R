@@ -109,7 +109,7 @@ predMaxS<- function(){
     if (volF >= 0 && day< jul){
       for (it in day:(day+m-1)){
         count=count+1
-        vF = volF - (volF/(jul-day))*(day-it) #predict maxS given equal distribution of inflow over next m days
+        vF = volF - (volF/(jul-day))*(day-it) #predict maxS given equal distribution of inflow 
         maxSday<- resStor(vF, it) 
         storD<-maxSday$stor
         maxS[day, count] <- (maxAF-storD) #max storage today given the whole years inflow
@@ -170,7 +170,7 @@ evalS<- function(Qin, day, stor, maxS, Qmin, n){
   
   if (day > n+1){
   dsdt= (stor[day] - stor[day-n])/n
-  storF[day] = (dsdt*n)+stor[day] #forecast what the storage would be in n days given previous ∆ in S
+  storF[day] <<- (dsdt*n)+stor[day] #forecast what the storage would be in n days given previous ∆ in S
   
     if (storF[day] >= maxS[day,n] && day <188){
       dsdtMax= (storF[day] - maxS[day,n])/n
@@ -242,7 +242,7 @@ changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to b
   return(outlist)
 }
 
-s=5 #number of prior days to estimate change in storage
+s=8 #number of prior days to estimate change in storage
 m=10 #planning window
 #-------------------------------------------------------------
 #   set up blank matricies 
@@ -261,16 +261,16 @@ storF=matrix(data=NA, nrow = jul, ncol = 1)
 #---------------------------------------------------------------
 #select Qin from matrix or array? - turn into funtion
 
-#for (wy in 2){
-wy=2  
+for (wy in 1:20){
+  
   stor[1]<-FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
   Qin<- FC$Q[FC$WY == yrs[wy]]
 
   maxS<-predMaxS()
-
-
-
+  #matplot(maxS, type='l', ylim=c(300000, 1010200))
+  #lines(FC$AF[FC$WY == yrs[wy]], col='green') 
   
+
   for (day in 1:jul){ 
     # Min flood control release for storage goals on April 1 and every 15 days after
     if (day < 91){
@@ -303,21 +303,21 @@ wy=2
   FC$Qmin[FC$WY == yrs[wy]]<-minFCq[,]
   FC$storF[FC$WY == yrs[wy]]<-storF[,]
   
-#}
+}
 
 
 
 #plot the initial results
-wy=2
+for(wy in 1:20){
   plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
   lines(FC$stor[FC$WY == yrs[wy]], col='orange')
   lines(FC$AF[FC$WY == yrs[wy]], col='green') 
   lines(FC$storF[FC$WY == yrs[wy]], col='blue') 
-  lines(maxS[,m], col="red")
+
   
   #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
   plot(FC$qo[FC$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
   lines(qlim[,2], type='l', lty=3, col='grey17')
   lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
-
+}
 
