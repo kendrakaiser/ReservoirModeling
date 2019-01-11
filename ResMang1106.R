@@ -69,36 +69,24 @@ for (wy in 1:21){
 #       DEFINE FUNCTIONS 
 ##--------------------------------------
 
-#Relationship between change in discharge and flow -----
-flow=seq(from=240,to=10740, by=450)
-flow2=seq(740, 11240, 450)
-perc= flow/flow2
-p_dQ<-lm(perc~ log(flow))
-a<- as.numeric(p_dQ$coefficients[1])
-b<- as.numeric(p_dQ$coefficients[2])
-
-p<- function(flow){
-  a + log(flow)*b
-}
-
 # REQUIRED storage - lookup day of year, inflow volume ----
 # plate 7-1 and plate 7-3 - Needs sum of timeseries
 resStor<- function(sumQin,doy){ 
  
   fvol<-round(sumQin/1000000, digits=1)
   fcol<- as.numeric(fv$col[fv$fv == fvol])
-  stor<- as.numeric(fcVol[doy, fcol+2])
+  reqStor<- as.numeric(fcVol[doy, fcol+2])
   #Winter flood control space (low flow years Plate 7-2) ----
   if (doy < 91 && fvol > 1.2 && fvol < 1.8){
     wcol<- as.numeric(fv$wcol[fv$wfc == fvol])
-    stor<- as.numeric(wfc[doy,wcol])
+    reqStor<- as.numeric(wfc[doy,wcol])
   }
-  if (is.na(stor) == TRUE){
-    stor<- as.numeric(fcVol[doy, fcol+2])
+  if (is.na(reqStor) == TRUE){
+    reqStor<- as.numeric(fcVol[doy, fcol+2])
   }
   #required storage volume
-  outList<-(list("stor" = stor))
-  return(outList)
+
+  return(reqStor)
 } 
 
 #predict max storage in the next m days
@@ -132,7 +120,7 @@ minRelease<- function(){
   
   volFresid <- volF - volFmar
   FCvolAP<- resStor(volFresid, 91) #flood control space required on april 1
-  minEvac<- FCvolAP$stor - stor[day] #minimum evaculation btw today and April 1
+  minEvac<- FCvolAP$stor - availStor #minimum evaculation btw today and April 1
   minReleaseVol <- minEvac+volFmar
   Qmin<- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
   
@@ -148,15 +136,16 @@ minReleaseApril<-function(){
   residual15<- volF-volF_target15
   residual30<- volF- volF_target30
   
+  
   if (day < jul-30){
-    FCvol30<- resStor(residual30, day+30)
-    minEvac30 <- FCvol30$stor - stor[day]
+    FCvol30<- resStor(residual30, day+30) #required storage space
+    minEvac30 <- FCvol30 - availStor
     minReleaseVol30 <- minEvac30 + volF_target30
     q30<-(minReleaseVol30*v2f)/(jul-day+1) 
   } else {q30 <- minQ}
   if (day < jul-15){
     FCvol15<-resStor(residual15, day+15)
-    minEvac15 <- FCvol15$stor - stor[day]
+    minEvac15 <- FCvol15 - availStor
     minReleaseVol15 <- minEvac15 + volF_target15
     q15<-(minReleaseVol15*v2f)/(jul-day+1)
   } else {q15 <- minQ}
@@ -166,14 +155,15 @@ minReleaseApril<-function(){
 }
 
 #evaluate change in storage to prevent going over maxS
-evalS<- function(Qin, day, stor, maxS, Qmin, n){
+evalS<- function(Qin, day, stor, maxS, Qmin){
   
-  if (day > n+1){
-  dsdt= (stor[day] - stor[day-n])/n
-  storF[day] <<- (dsdt*n)+stor[day] #forecast what the storage would be in n days given previous ∆ in S
+  if (day > s+1){
+  dsdt= (stor[day] - stor[day-s])/s
   
-    if (storF[day] >= maxS[day,n] && day <188){
-      dsdtMax= (storF[day] - maxS[day,n])/n
+  storF[day] <<- (dsdt*m)+stor[day] #forecast what the storage would be in s days given previous ∆ in S
+  
+    if (storF[day] >= maxS[day,m] && day <188){
+      dsdtMax= (storF[day] - maxS[day,m])/s
       Qnew = Qmin[day] + (dsdtMax*v2f)
     } else {Qnew = Qmin[day]}
 
@@ -242,7 +232,7 @@ changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to b
   return(outlist)
 }
 
-s=8 #number of prior days to estimate change in storage
+s=5 #number of prior days to estimate change in storage
 m=10 #planning window
 #-------------------------------------------------------------
 #   set up blank matricies 
@@ -272,6 +262,8 @@ for (wy in 1:20){
   
 
   for (day in 1:jul){ 
+  
+    availStor <- maxAF-stor[day]
     # Min flood control release for storage goals on April 1 and every 15 days after
     if (day < 91){
       minFCq[day]<-minRelease()
@@ -283,8 +275,17 @@ for (wy in 1:20){
       minFCq[day] <- minQ
     }
     
+    if (storF[day] > maxAF && day > s+1){
+      addQ= ((storF[day]-maxAF)/m)*v2f
+      minFCq[day] = minFCq[day] + addQ
+    }
     
-    resS <- evalS(Qin, day, stor, maxS, minFCq, s)
+    if (stor[day] > maxAF){
+      addQ = (stor[day] -maxAF)*v2f
+      minFCq[day] = minFCq[day] + addQ
+    }
+    
+    resS <- evalS(Qin, day, stor, maxS, minFCq)
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
     storF[day]<-resS$storF[day]
