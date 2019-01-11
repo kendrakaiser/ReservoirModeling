@@ -261,7 +261,7 @@ for (wy in 1:10){
     }
     
     
-    resS <- evalS(Qin, day, stor, maxS, minFCq, 5)
+    resS <- evalS(Qin, day, stor, maxS, minFCq, 10)
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
     storF[day]<-resS$storF[day]
