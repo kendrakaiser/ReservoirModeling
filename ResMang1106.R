@@ -209,7 +209,7 @@ changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to b
   return(outlist)
 }
 
-m=10 #planning window
+m=15 #planning window
 #-------------------------------------------------------------
 #   set up blank matricies 
 #------------------------------------------------------------
@@ -227,7 +227,7 @@ storF=matrix(data=NA, nrow = jul, ncol = 1)
 #---------------------------------------------------------------
 #select Qin from matrix or array? - turn into funtion
 
-for (wy in 1:10){
+for (wy in 2){
   stor[1]<-FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
   Qin<- FC$Q[FC$WY == yrs[wy]]
 
@@ -261,7 +261,7 @@ for (wy in 1:10){
     }
     
     
-    resS <- evalS(Qin, day, stor, maxS, minFCq, 10)
+    resS <- evalS(Qin, day, stor, maxS, minFCq, m)
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
     storF[day]<-resS$storF[day]
@@ -285,7 +285,7 @@ for (wy in 1:10){
 
 
 #plot the initial results
-for (wy in 1:3){
+for (wy in 2){
   plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
   lines(FC$stor[FC$WY == yrs[wy]], col='orange')
   lines(FC$AF[FC$WY == yrs[wy]], col='green') 
