@@ -35,6 +35,8 @@ minQ<-240
 maxAF<-1010188
 minS<-  41000 +11630+ 28767 #total inactive capacity AND, ARK, LP
 
+
+
 #subset (DOY 1: July 31st) from full timeseries -----
 jul=196 #change to 212 #july 31st once update fcVol csv
 reps <-100
@@ -67,7 +69,19 @@ for (wy in 1:21){
 #       DEFINE FUNCTIONS 
 ##--------------------------------------
 
-# REQUIRED storage - lookup day of year, inflow volume 
+#Relationship between change in discharge and flow -----
+flow=seq(from=240,to=10740, by=450)
+flow2=seq(740, 11240, 450)
+perc= flow/flow2
+p_dQ<-lm(perc~ log(flow))
+a<- as.numeric(p_dQ$coefficients[1])
+b<- as.numeric(p_dQ$coefficients[2])
+
+p<- function(flow){
+  a + log(flow)*b
+}
+
+# REQUIRED storage - lookup day of year, inflow volume ----
 # plate 7-1 and plate 7-3 - Needs sum of timeseries
 resStor<- function(sumQin,doy){ 
  
@@ -87,6 +101,25 @@ resStor<- function(sumQin,doy){
   return(outList)
 } 
 
+#predict max storage in the next m days
+predMaxS<- function(){
+  for (day in 1:jul){
+    volF<<- FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow
+    count=0
+    if (volF >= 0 && day< jul){
+      for (it in day:(day+m-1)){
+        count=count+1
+        vF = volF - (volF/(jul-day))*(day-it) #predict maxS given equal distribution of inflow over next m days
+        maxSday<- resStor(vF, it) 
+        storD<-maxSday$stor
+        maxS[day, count] <- (maxAF-storD) #max storage today given the whole years inflow
+      }
+    } else {storD <- 0}
+  
+    maxS[is.na(maxS)]<- maxAF
+  }
+  return(maxS)
+}
 #determine minimum daily release before April 1
 minRelease<- function(){
   ix= which(prj$start <= day & prj$end >= day)
@@ -151,10 +184,10 @@ evalS<- function(Qin, day, stor, maxS, Qmin, n){
   }
   
   #if the calculated discharge is greater than +/- 500 set it to +/- 500
-  #if (qo[day] > qo[day-1]+500 && day > 2){
-    #qo[day] = qo[day-1]+500
-  #} else if (qo[day] < qo[day-1]-500 && day > 2){
-   # qo[day] = qo[day-1]-500}
+  if (qo[day] > qo[day-1]+500 && day > 2){
+    qo[day] = qo[day-1]+500
+  } else if (qo[day] < qo[day-1]-500 && day > 2){
+    qo[day] = qo[day-1]-500}
   
   #if S > maxS, change of volume in reservoir
   #if (stor[day] >= maxS) {
@@ -171,7 +204,7 @@ evalS<- function(Qin, day, stor, maxS, Qmin, n){
     stor[day+1]<-stor[day] + dS[day]  #AF in the reservoir
   }
   
-  outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo, "day"=day, "storF"=storF))
+  outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo, "storF"=storF))
 }
   
   
@@ -209,7 +242,8 @@ changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to b
   return(outlist)
 }
 
-m=15 #planning window
+s=5 #number of prior days to estimate change in storage
+m=10 #planning window
 #-------------------------------------------------------------
 #   set up blank matricies 
 #------------------------------------------------------------
@@ -227,24 +261,13 @@ storF=matrix(data=NA, nrow = jul, ncol = 1)
 #---------------------------------------------------------------
 #select Qin from matrix or array? - turn into funtion
 
-for (wy in 2){
+#for (wy in 2){
+wy=2  
   stor[1]<-FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
   Qin<- FC$Q[FC$WY == yrs[wy]]
 
-  for (day in 1:jul){
-    volF= FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow
-    count=0
-    if (volF >= 0 && day< jul){
-      for (it in day:(day+m-1)){
-        count=count+1
-        vF = volF - (volF/(jul-day))*(day-it) #predict maxS given equal distribution of inflow over next m days
-        maxSday<- resStor(vF, it) 
-        storD<-maxSday$stor
-        maxS[day, count] <- (maxAF-storD) #max storage today given the whole years inflow
-      }
-    } else {storD <- 0}
-    maxS[is.na(maxS)]<- maxAF 
-  }
+  maxS<-predMaxS()
+
 
 
   
@@ -261,7 +284,7 @@ for (wy in 2){
     }
     
     
-    resS <- evalS(Qin, day, stor, maxS, minFCq, m)
+    resS <- evalS(Qin, day, stor, maxS, minFCq, s)
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
     storF[day]<-resS$storF[day]
@@ -280,19 +303,21 @@ for (wy in 2){
   FC$Qmin[FC$WY == yrs[wy]]<-minFCq[,]
   FC$storF[FC$WY == yrs[wy]]<-storF[,]
   
-}
+#}
 
 
 
 #plot the initial results
-for (wy in 2){
+wy=2
   plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
   lines(FC$stor[FC$WY == yrs[wy]], col='orange')
   lines(FC$AF[FC$WY == yrs[wy]], col='green') 
+  lines(FC$storF[FC$WY == yrs[wy]], col='blue') 
+  lines(maxS[,m], col="red")
   
   #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
   plot(FC$qo[FC$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
   lines(qlim[,2], type='l', lty=3, col='grey17')
   lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
-}
+
 
