@@ -98,9 +98,8 @@ predMaxS<- function(){
       for (it in day:(day+m-1)){
         count=count+1
         vF = volF - (volF/(jul-day))*(day-it) #predict maxS given equal distribution of inflow 
-        maxSday<- resStor(vF, it) 
-        storD<-maxSday$stor
-        maxS[day, count] <- (maxAF-storD) #max storage today given the whole years inflow
+        reqS<- resStor(vF, it) 
+        maxS[day, count] <- (maxAF-reqS) #max storage today given the whole years inflow
       }
     } else {storD <- 0}
   
@@ -120,7 +119,7 @@ minRelease<- function(){
   
   volFresid <- volF - volFmar
   FCvolAP<- resStor(volFresid, 91) #flood control space required on april 1
-  minEvac<- FCvolAP$stor - availStor #minimum evaculation btw today and April 1
+  minEvac<- FCvolAP - availStor[day] #minimum evaculation btw today and April 1
   minReleaseVol <- minEvac+volFmar
   Qmin<- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
   
@@ -139,13 +138,13 @@ minReleaseApril<-function(){
   
   if (day < jul-30){
     FCvol30<- resStor(residual30, day+30) #required storage space
-    minEvac30 <- FCvol30 - availStor
+    minEvac30 <- FCvol30 - availStor[day]
     minReleaseVol30 <- minEvac30 + volF_target30
     q30<-(minReleaseVol30*v2f)/(jul-day+1) 
   } else {q30 <- minQ}
   if (day < jul-15){
     FCvol15<-resStor(residual15, day+15)
-    minEvac15 <- FCvol15 - availStor
+    minEvac15 <- FCvol15 - availStor[day]
     minReleaseVol15 <- minEvac15 + volF_target15
     q15<-(minReleaseVol15*v2f)/(jul-day+1)
   } else {q15 <- minQ}
@@ -244,7 +243,7 @@ dS=matrix(data=NA, nrow = jul, ncol = 1)
 minFCq=matrix(data=NA, nrow = jul, ncol = 1)
 qo=matrix(data=NA, nrow = jul, ncol = 1)
 storF=matrix(data=NA, nrow = jul, ncol = 1)
-
+availStor=matrix(data=NA, nrow = jul, ncol = 1)
 
 #---------------------------------------------------------------
 #   determine change in storage and outflow for any day of year
@@ -255,15 +254,15 @@ for (wy in 1:20){
   
   stor[1]<-FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
   Qin<- FC$Q[FC$WY == yrs[wy]]
-
+ 
   maxS<-predMaxS()
   #matplot(maxS, type='l', ylim=c(300000, 1010200))
   #lines(FC$AF[FC$WY == yrs[wy]], col='green') 
   
 
   for (day in 1:jul){ 
-  
-    availStor <- maxAF-stor[day]
+    volF<- FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow  
+    availStor[day] <- maxAF-stor[day]
     # Min flood control release for storage goals on April 1 and every 15 days after
     if (day < 91){
       minFCq[day]<-minRelease()
@@ -299,7 +298,8 @@ for (wy in 1:20){
   
   #save intial run output ----  # change for debugging - put clear matricies at beginning
   FC$qo[FC$WY == yrs[wy]]<-qo[,]   #rr$qo
-  FC$stor[FC$WY == yrs[wy]]<-stor[,]   #rr#stor
+  FC$stor[FC$WY == yrs[wy]]<-stor[,]
+  FC$availS[FC$WY == yrs[wy]]<-availStor[,]
   FC$maxS[FC$WY == yrs[wy]]<-maxS[,1]
   FC$Qmin[FC$WY == yrs[wy]]<-minFCq[,]
   FC$storF[FC$WY == yrs[wy]]<-storF[,]
