@@ -196,8 +196,6 @@ evalS<- function(Qin, day, stor, maxS, Qmin){
   outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo, "storF"=storF))
 }
   
-  
-  
 # CHANGE STORAGE - based on current storage, minimum discharge and ramping rates
 #needs whole timeseries and maxS of any given day 
 changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to be here
@@ -257,8 +255,7 @@ for (wy in 1:20){
  
   maxS<-predMaxS()
   #matplot(maxS, type='l', ylim=c(300000, 1010200))
-  #lines(FC$AF[FC$WY == yrs[wy]], col='green') 
-  
+  #lines(FC$AF[FC$WY == yrs[wy]], col='green')
 
   for (day in 1:jul){ 
     volF<- FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow  
@@ -274,10 +271,10 @@ for (wy in 1:20){
       minFCq[day] <- minQ
     }
     
-    if (storF[day] > maxAF && day > s+1){
-      addQ= ((storF[day]-maxAF)/m)*v2f
-      minFCq[day] = minFCq[day] + addQ
-    }
+   # if (storF[day] > maxAF && day > (s+1)){
+    #  addQ= ((storF[day]-maxAF)/m)*v2f
+      #minFCq[day] = minFCq[day] + addQ
+    #}
     
     if (stor[day] > maxAF){
       addQ = (stor[day] -maxAF)*v2f
@@ -288,7 +285,7 @@ for (wy in 1:20){
     
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
-    storF[day]<-resS$storF[day]  ###HERES A PROBLEM storF is output from the eval function and is also a single matrix too... 
+    #storF[day]<-resS$storF[day]  ###HERES A PROBLEM storF is output from the eval function and is also a single matrix too... 
     
     if (day < jul){
       stor[day+1]<-resS$stor[day+1] #AF in the reservoir
@@ -310,7 +307,7 @@ for (wy in 1:20){
 
 
 #plot the initial results
-for(wy in 14){
+for(wy in 1:4){
   plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
   lines(FC$stor[FC$WY == yrs[wy]], col='orange')
   lines(FC$AF[FC$WY == yrs[wy]], col='green') 
