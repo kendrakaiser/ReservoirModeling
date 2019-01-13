@@ -71,22 +71,22 @@ for (wy in 1:21){
 
 # REQUIRED storage - lookup day of year, inflow volume ----
 # plate 7-1 and plate 7-3 - Needs sum of timeseries
-resStor<- function(sumQin,doy){ 
+reqStor<- function(sumQin,doy){ 
  
   fvol<-round(sumQin/1000000, digits=1)
   fcol<- as.numeric(fv$col[fv$fv == fvol])
-  reqStor<- as.numeric(fcVol[doy, fcol+2])
+  fcs<- as.numeric(fcVol[doy, fcol+2])
   #Winter flood control space (low flow years Plate 7-2) ----
   if (doy < 91 && fvol > 1.2 && fvol < 1.8){
     wcol<- as.numeric(fv$wcol[fv$wfc == fvol])
-    reqStor<- as.numeric(wfc[doy,wcol])
+    fcs<- as.numeric(wfc[doy,wcol])
   }
-  if (is.na(reqStor) == TRUE){
-    reqStor<- as.numeric(fcVol[doy, fcol+2])
+  if (is.na(fcs) == TRUE){
+    fcs<- as.numeric(fcVol[doy, fcol+2])
   }
-  #required storage volume
+  #required flood control space (storage volume)
 
-  return(reqStor)
+  return(fcs)
 } 
 
 #predict max storage in the next m days
@@ -98,7 +98,7 @@ predMaxS<- function(){
       for (it in day:(day+m-1)){
         count=count+1
         vF = volF - (volF/(jul-day))*(day-it) #predict maxS given equal distribution of inflow 
-        reqS<- resStor(vF, it) 
+        reqS<- reqStor(vF, it) 
         maxS[day, count] <- (maxAF-reqS) #max storage today given the whole years inflow
       }
     } else {storD <- 0}
@@ -118,7 +118,7 @@ minRelease<- function(){
   } else {volFmar = vol1}
   
   volFresid <- volF - volFmar
-  FCvolAP<- resStor(volFresid, 91) #flood control space required on april 1
+  FCvolAP<- reqStor(volFresid, 91) #flood control space required on april 1
   minEvac<- FCvolAP - availStor[day] #minimum evaculation btw today and April 1
   minReleaseVol <- minEvac+volFmar
   Qmin<- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
@@ -137,13 +137,13 @@ minReleaseApril<-function(){
   
   
   if (day < jul-30){
-    FCvol30<- resStor(residual30, day+30) #required storage space
+    FCvol30<- reqStor(residual30, day+30) #required storage space
     minEvac30 <- FCvol30 - availStor[day]
     minReleaseVol30 <- minEvac30 + volF_target30
     q30<-(minReleaseVol30*v2f)/(jul-day+1) 
   } else {q30 <- minQ}
   if (day < jul-15){
-    FCvol15<-resStor(residual15, day+15)
+    FCvol15<-reqStor(residual15, day+15)
     minEvac15 <- FCvol15 - availStor[day]
     minReleaseVol15 <- minEvac15 + volF_target15
     q15<-(minReleaseVol15*v2f)/(jul-day+1)
@@ -285,9 +285,10 @@ for (wy in 1:20){
     }
     
     resS <- evalS(Qin, day, stor, maxS, minFCq)
+    
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
-    storF[day]<-resS$storF[day]
+    storF[day]<-resS$storF[day]  ###HERES A PROBLEM storF is output from the eval function and is also a single matrix too... 
     
     if (day < jul){
       stor[day+1]<-resS$stor[day+1] #AF in the reservoir
@@ -309,11 +310,12 @@ for (wy in 1:20){
 
 
 #plot the initial results
-for(wy in 1:20){
+for(wy in 14){
   plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
   lines(FC$stor[FC$WY == yrs[wy]], col='orange')
   lines(FC$AF[FC$WY == yrs[wy]], col='green') 
   lines(FC$storF[FC$WY == yrs[wy]], col='blue') 
+  lines(FC$availStor[FC$WY == yrs[wy]], col='purple') 
 
   
   #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
