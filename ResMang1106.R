@@ -271,9 +271,9 @@ for (wy in 1:20){
       minFCq[day] <- minQ
     }
     
-   # if (storF[day] > maxAF && day > (s+1)){
-    #  addQ= ((storF[day]-maxAF)/m)*v2f
-      #minFCq[day] = minFCq[day] + addQ
+   # if (storF[day] > maxAF && day > (s+1)){  This doesn't work 
+     # addQ= ((storF[day]-maxAF)/m)*v2f
+    #  minFCq[day] = minFCq[day] + addQ
     #}
     
     if (stor[day] > maxAF){
@@ -305,9 +305,13 @@ for (wy in 1:20){
 }
 
 
-
+exceed <- which(FC$stor > FC$maxS)
+exceedDate=matrix(data=NA, nrow = length(exceed), ncol = 2)
+exceedDate[,1] <- FC$WY[exceed]
+exceedDate[,2] <- FC$doy[exceed]
+  
 #plot the initial results
-for(wy in 1:4){
+for(wy in 1:10){
   plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
   lines(FC$stor[FC$WY == yrs[wy]], col='orange')
   lines(FC$AF[FC$WY == yrs[wy]], col='green') 
