@@ -196,39 +196,6 @@ evalS<- function(Qin, day, stor, maxS, Qmin){
   outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo, "storF"=storF))
 }
   
-# CHANGE STORAGE - based on current storage, minimum discharge and ramping rates
-#needs whole timeseries and maxS of any given day 
-changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to be here
-
-  if (stor[day] >= maxS) {#if S > max AF, change of volume in reservoir
-    dS[day] <- maxS - stor[day] - (Qin[day]*f2v) #calculate ∆ volume of water in the reservoir
-    qo[day] <- -dS[day]*v2f
-    ##******************************
-    #this is the problem - moved ramping rates here, but they need to be contingent on the previous days discharge and how close to the maxS 
-    ##******************************
-  #} else if (day > 21 && minFCq[day] > minFCq [day-1]) {
-    #qo[day] <- qo[day-1] + 500 
-    #dS[day] <- (Qin[day]- qo[day])*f2v
-  #} else if (day > 21 && minFCq[day] <= minFCq[day-1]) {
-   # qo[day] <- qo[day-1] - 500 
-    #dS[day] <- (Qin[day]- qo[day])*f2v
-  } else {
-    qo[day] <- Qmin[day]
-    dS[day] <- (Qin[day]- qo[day])*f2v
-  }
-
-  if (stor[day] <= minS){ #dont let storage go below the minimum
-    qo[day] <- minQ
-    dS[day] <- -minQ*f2v 
-  }
-  if (day < jul){
-    stor[day+1]<-stor[day] + dS[day]  #AF in the reservoir
-  }
-  
-  outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo, "day"=day))
-  return(outlist)
-}
-
 s=5 #number of prior days to estimate change in storage
 m=10 #planning window
 #-------------------------------------------------------------
