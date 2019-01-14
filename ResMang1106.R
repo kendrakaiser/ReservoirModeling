@@ -75,7 +75,7 @@ reqStor<- function(sumQin,doy){
  
   fvol<-round(sumQin/1000000, digits=1)
   fcol<- as.numeric(fv$col[fv$fv == fvol])
-  fcs<- as.numeric(fcVol[doy, fcol+2])
+  fcs<- as.numeric(fcVol[doy, fcol+2]) ##PROBLEM when volume forecast == 0 ***
   #Winter flood control space (low flow years Plate 7-2) ----
   if (doy < 91 && fvol > 1.2 && fvol < 1.8){
     wcol<- as.numeric(fv$wcol[fv$wfc == fvol])
@@ -163,13 +163,12 @@ forecastS<-function(){
 #evaluate change in storage to prevent going over maxS
 evalS<- function(Qin, day, stor, maxS, Qmin){
   
-  if (storF[day] >= maxS[day,m] && day <188 && day > s+1){
+  if (storF[day] >= maxS[day,m] && day > s+1){ #&& day <188
     dsdtMax= (storF[day] - maxS[day,m])/s
     qo[day] = Qmin[day] + (dsdtMax*v2f)
     flag = 'TRUE' #true we need to increase ramp rates to get rid of the water
   } else {qo[day]= Qmin[day]
     flag='FALSE'}
-  
   
   if (stor[day] > maxAF){
     addQ = (stor[day] - maxAF)*v2f
@@ -186,6 +185,12 @@ evalS<- function(Qin, day, stor, maxS, Qmin){
     qo[day] = qo[day-1]+ramp
   } else if (qo[day] < qo[day-1]-500 && day > 2){
     qo[day] = qo[day-1]-500}
+  
+  if (availStor[day] <= (1000*v2f)){ #this puts a hard constraints on not topping the dam - but doiesnt work 21 times
+    qo[day] = qo[day] + 1000
+    availStor[day] = availStor[day] + 1000*f2v
+    stor[day] = stor[day] - (1000*f2v)
+  }
   
   dS[day] <- (Qin[day]- qo[day])*f2v
   
@@ -247,14 +252,13 @@ for (wy in 1:20){
     
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
-    #storF[day]<-resS$storF[day]  ###HERES A PROBLEM storF is output from the eval function and is also a single matrix too... 
-    
+   
     if (day < jul){
       stor[day+1]<-resS$stor[day+1] #AF in the reservoir
     }
   }
-  #save intial run output ----  # change for debugging - put clear matricies at beginning
-  FC$qo[FC$WY == yrs[wy]]<-qo[,]   #rr$qo
+  #save intial run output ----  # change for debugging? - put clear matricies at beginning
+  FC$qo[FC$WY == yrs[wy]]<-qo[,]   
   FC$stor[FC$WY == yrs[wy]]<-stor[,]
   FC$availS[FC$WY == yrs[wy]]<-availStor[,]
   FC$maxS[FC$WY == yrs[wy]]<-maxS[,1]
@@ -269,15 +273,22 @@ exceedDate[,1] <- FC$WY[exceed]
 exceedDate[,2] <- FC$doy[exceed]
 hist(exceedDate[,2])
 
+topped <- which(FC$stor > maxAF)
+FC$topped<- FC$stor > maxAF
+hist(FC$doy[FC$topped == 'TRUE'])
+
 #plot the initial results
-for(wy in 1:10){
+for(wy in 1:21){
   plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
   lines(FC$stor[FC$WY == yrs[wy]], col='orange')
   lines(FC$AF[FC$WY == yrs[wy]], col='green') 
 
   #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
-  plot(FC$qo[FC$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
-  lines(qlim[,2], type='l', lty=3, col='grey17')
-  lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
+ # plot(FC$qo[FC$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
+#  lines(qlim[,2], type='l', lty=3, col='grey17')
+ # lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
 }
 
+
+#make a few plots - e.g number, timing and volume that the managers exceeded the maxS for the day - and other plots from teh nicholas data site
+#determine average day they start drafting for irrigation - e.g. one dsdt is negative and never goes positive again
