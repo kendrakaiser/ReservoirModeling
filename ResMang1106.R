@@ -278,7 +278,7 @@ FC$topped<- FC$stor > maxAF
 hist(FC$doy[FC$topped == 'TRUE'])
 
 #plot the initial results
-for(wy in 1:21){
+for(wy in 1:4){
   plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
   lines(FC$stor[FC$WY == yrs[wy]], col='orange')
   lines(FC$AF[FC$WY == yrs[wy]], col='green') 
