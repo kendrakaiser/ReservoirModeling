@@ -248,7 +248,7 @@ availStor=matrix(data=NA, nrow = jul, ncol = 1)
 #---------------------------------------------------------------
 #select Qin from matrix or array? - turn into funtion
 
-for (wy in 1:20){
+for (wy in 1:2){
   
   stor[1]<-FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
   Qin<- FC$Q[FC$WY == yrs[wy]]
@@ -311,7 +311,7 @@ exceedDate[,1] <- FC$WY[exceed]
 exceedDate[,2] <- FC$doy[exceed]
   
 #plot the initial results
-for(wy in 1:10){
+for(wy in 1:2){
   plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
   lines(FC$stor[FC$WY == yrs[wy]], col='orange')
   lines(FC$AF[FC$WY == yrs[wy]], col='green') 
@@ -324,4 +324,20 @@ for(wy in 1:10){
   lines(qlim[,2], type='l', lty=3, col='grey17')
   lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
 }
+
+
+#get direction of change in storage and last day of increasing sotrage
+dervDS=matrix(data=NA, nrow = 195, ncol = 1)
+DOY_decreasingS=matrix(data=NA, nrow = 21, ncol = 1)
+for (wy in 1:21){
+  stor=FC$AF[FC$WY == yrs[wy]]
+  
+  for(i in 1:195){
+    dervDS[i]=(stor[i+1]/stor[i])
+  }
+  
+  DOY_decreasingS[wy]=max(which(dervDS > 1))
+}
+
+
 
