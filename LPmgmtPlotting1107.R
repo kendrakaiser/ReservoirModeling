@@ -13,10 +13,10 @@ qs<-rep(c("Inflow", "Limit","Modeled Q", "Observed Q"), each=196)
 gnames<- c("g98", "g99", "g00", 'g01', "g02", "g03", "g04","g05", 'g06', "g07", "g08", "g09", "g10", "g11", "g12", "g13", "g14", "g15", "g16", "g17")
 
 plotfn<- function(wy){
-  vol<-(c(FC$storN[FC$WY == yrs[wy]],FC$AF[FC$WY == yrs[wy]],FC$maxS[FC$WY == yrs[wy]]))/10000
+  vol<-(c(FC$stor[FC$WY == yrs[wy]],FC$AF[FC$WY == yrs[wy]],FC$maxS[FC$WY == yrs[wy]]))/10000
   df <- data.frame(fill,x,vol)
   
-  q<- c(FC$Q[FC$WY == yrs[wy]], qlim[1:196,2],FC$qoN[FC$WY == yrs[wy]], FC$Qo[FC$WY == yrs[wy]])/1000
+  q<- c(FC$Q[FC$WY == yrs[wy]], qlim[1:196,2],FC$qo[FC$WY == yrs[wy]], FC$Qo[FC$WY == yrs[wy]])/1000
   dfQ<-data.frame(q, x2, qs)
   
   ps<-ggplot(df, aes(x=x, y=vol, fill=fill)) +

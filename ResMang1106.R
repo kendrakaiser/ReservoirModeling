@@ -75,7 +75,7 @@ reqStor<- function(sumQin,doy){
  
   fvol<-round(sumQin/1000000, digits=1)
   fcol<- as.numeric(fv$col[fv$fv == fvol])
-  fcs<- as.numeric(fcVol[doy, fcol+2])
+  fcs<- as.numeric(fcVol[doy, fcol+2]) ##PROBLEM when volume forecast == 0 ***
   #Winter flood control space (low flow years Plate 7-2) ----
   if (doy < 91 && fvol > 1.2 && fvol < 1.8){
     wcol<- as.numeric(fv$wcol[fv$wfc == fvol])
@@ -153,34 +153,44 @@ minReleaseApril<-function(){
   
 }
 
+forecastS<-function(){
+  if (day > s+1){
+    dsdt= (stor[day] - stor[day-s])/s
+    storF[day] <<- (dsdt*m)+stor[day] #forecast what the storage would be in s days given previous ∆ in S
+  }
+}  
+
 #evaluate change in storage to prevent going over maxS
 evalS<- function(Qin, day, stor, maxS, Qmin){
   
-  if (day > s+1){
-  dsdt= (stor[day] - stor[day-s])/s
+  if (storF[day] >= maxS[day,m] && day > s+1){ #&& day <188
+    dsdtMax= (storF[day] - maxS[day,m])/s
+    qo[day] = Qmin[day] + (dsdtMax*v2f)
+    flag = 'TRUE' #true we need to increase ramp rates to get rid of the water
+  } else {qo[day]= Qmin[day]
+    flag='FALSE'}
   
-  storF[day] <<- (dsdt*m)+stor[day] #forecast what the storage would be in s days given previous ∆ in S
-  
-    if (storF[day] >= maxS[day,m] && day <188){
-      dsdtMax= (storF[day] - maxS[day,m])/s
-      Qnew = Qmin[day] + (dsdtMax*v2f)
-    } else {Qnew = Qmin[day]}
-
-  qo[day] <- Qnew
-  
-  } else {
-    qo[day] <- Qmin[day]
-  }
+  if (stor[day] > maxAF){
+    addQ = (stor[day] - maxAF)*v2f
+    minFCq[day] = minFCq[day] + addQ
+    flag= 'TRUE'
+  } else {flag='FALSE'}
   
   #if the calculated discharge is greater than +/- 500 set it to +/- 500
-  if (qo[day] > qo[day-1]+500 && day > 2){
-    qo[day] = qo[day-1]+500
+  if (flag == 'TRUE'){ #going over maxS or maxAF
+    ramp= 1000
+  } else {ramp = 500}
+  
+  if (qo[day] > qo[day-1]+ramp && day > 2){
+    qo[day] = qo[day-1]+ramp
   } else if (qo[day] < qo[day-1]-500 && day > 2){
     qo[day] = qo[day-1]-500}
   
-  #if S > maxS, change of volume in reservoir
-  #if (stor[day] >= maxS) {
-   # qo[day] <- qo[day-1] + 500}
+  if (availStor[day] <= (1000*v2f)){ #this puts a hard constraints on not topping the dam - but doiesnt work 21 times
+    qo[day] = qo[day] + 1000
+    availStor[day] = availStor[day] + 1000*f2v
+    stor[day] = stor[day] - (1000*f2v)
+  }
   
   dS[day] <- (Qin[day]- qo[day])*f2v
   
@@ -196,39 +206,6 @@ evalS<- function(Qin, day, stor, maxS, Qmin){
   outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo, "storF"=storF))
 }
   
-# CHANGE STORAGE - based on current storage, minimum discharge and ramping rates
-#needs whole timeseries and maxS of any given day 
-changeS<- function(Qin, day, stor, maxS, Qmin){ #consider if these all need to be here
-
-  if (stor[day] >= maxS) {#if S > max AF, change of volume in reservoir
-    dS[day] <- maxS - stor[day] - (Qin[day]*f2v) #calculate ∆ volume of water in the reservoir
-    qo[day] <- -dS[day]*v2f
-    ##******************************
-    #this is the problem - moved ramping rates here, but they need to be contingent on the previous days discharge and how close to the maxS 
-    ##******************************
-  #} else if (day > 21 && minFCq[day] > minFCq [day-1]) {
-    #qo[day] <- qo[day-1] + 500 
-    #dS[day] <- (Qin[day]- qo[day])*f2v
-  #} else if (day > 21 && minFCq[day] <= minFCq[day-1]) {
-   # qo[day] <- qo[day-1] - 500 
-    #dS[day] <- (Qin[day]- qo[day])*f2v
-  } else {
-    qo[day] <- Qmin[day]
-    dS[day] <- (Qin[day]- qo[day])*f2v
-  }
-
-  if (stor[day] <= minS){ #dont let storage go below the minimum
-    qo[day] <- minQ
-    dS[day] <- -minQ*f2v 
-  }
-  if (day < jul){
-    stor[day+1]<-stor[day] + dS[day]  #AF in the reservoir
-  }
-  
-  outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo, "day"=day))
-  return(outlist)
-}
-
 s=5 #number of prior days to estimate change in storage
 m=10 #planning window
 #-------------------------------------------------------------
@@ -254,8 +231,6 @@ for (wy in 1:2){
   Qin<- FC$Q[FC$WY == yrs[wy]]
  
   maxS<-predMaxS()
-  #matplot(maxS, type='l', ylim=c(300000, 1010200))
-  #lines(FC$AF[FC$WY == yrs[wy]], col='green')
 
   for (day in 1:jul){ 
     volF<- FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow  
@@ -271,37 +246,24 @@ for (wy in 1:2){
       minFCq[day] <- minQ
     }
     
-   # if (storF[day] > maxAF && day > (s+1)){  This doesn't work 
-     # addQ= ((storF[day]-maxAF)/m)*v2f
-    #  minFCq[day] = minFCq[day] + addQ
-    #}
-    
-    if (stor[day] > maxAF){
-      addQ = (stor[day] -maxAF)*v2f
-      minFCq[day] = minFCq[day] + addQ
-    }
+    forecastS()
     
     resS <- evalS(Qin, day, stor, maxS, minFCq)
     
     qo[day]<-resS$qo[day]
     dS[day]<- resS$dS[day]
-    #storF[day]<-resS$storF[day]  ###HERES A PROBLEM storF is output from the eval function and is also a single matrix too... 
-    
+   
     if (day < jul){
       stor[day+1]<-resS$stor[day+1] #AF in the reservoir
     }
   }
-
-
-  
-  #save intial run output ----  # change for debugging - put clear matricies at beginning
-  FC$qo[FC$WY == yrs[wy]]<-qo[,]   #rr$qo
+  #save intial run output ----  # change for debugging? - put clear matricies at beginning
+  FC$qo[FC$WY == yrs[wy]]<-qo[,]   
   FC$stor[FC$WY == yrs[wy]]<-stor[,]
   FC$availS[FC$WY == yrs[wy]]<-availStor[,]
   FC$maxS[FC$WY == yrs[wy]]<-maxS[,1]
   FC$Qmin[FC$WY == yrs[wy]]<-minFCq[,]
   FC$storF[FC$WY == yrs[wy]]<-storF[,]
-  
 }
 
 
@@ -309,23 +271,30 @@ exceed <- which(FC$stor > FC$maxS)
 exceedDate=matrix(data=NA, nrow = length(exceed), ncol = 2)
 exceedDate[,1] <- FC$WY[exceed]
 exceedDate[,2] <- FC$doy[exceed]
-  
+hist(exceedDate[,2])
+
+topped <- which(FC$stor > maxAF)
+FC$topped<- FC$stor > maxAF
+hist(FC$doy[FC$topped == 'TRUE'])
+
 #plot the initial results
+<<<<<<< HEAD
 for(wy in 1:2){
+=======
+for(wy in 1:4){
+>>>>>>> cf84b827d47322571518133b0b24fad1b8f058f4
   plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
   lines(FC$stor[FC$WY == yrs[wy]], col='orange')
   lines(FC$AF[FC$WY == yrs[wy]], col='green') 
-  lines(FC$storF[FC$WY == yrs[wy]], col='blue') 
-  lines(FC$availStor[FC$WY == yrs[wy]], col='purple') 
 
-  
   #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
-  plot(FC$qo[FC$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
-  lines(qlim[,2], type='l', lty=3, col='grey17')
-  lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
+ # plot(FC$qo[FC$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
+#  lines(qlim[,2], type='l', lty=3, col='grey17')
+ # lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
 }
 
 
+<<<<<<< HEAD
 #get direction of change in storage and last day of increasing sotrage
 dervDS=matrix(data=NA, nrow = 195, ncol = 1)
 DOY_decreasingS=matrix(data=NA, nrow = 21, ncol = 1)
@@ -341,3 +310,7 @@ for (wy in 1:21){
 
 
 
+=======
+#make a few plots - e.g number, timing and volume that the managers exceeded the maxS for the day - and other plots from teh nicholas data site
+#determine average day they start drafting for irrigation - e.g. one dsdt is negative and never goes positive again
+>>>>>>> cf84b827d47322571518133b0b24fad1b8f058f4
