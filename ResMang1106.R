@@ -1,6 +1,6 @@
 #import, sum storage for Anderson Ranch, Arrowrock, and Lucky Peak Reservoirs
-setwd("~/Documents/GitRepos/ReservoirModeling")
-#setwd("D:/Documents/GitRepos/ReservoirModel")
+#setwd("~/Documents/GitRepos/ReservoirModeling")
+setwd("D:/Documents/GitRepos/ReservoirModeling")
 
 #--------------------------------------
 # Import reservoir data 
@@ -34,7 +34,6 @@ f2v<-24*60*60*.0000229569
 minQ<-240
 maxAF<-1010188
 minS<-  41000 +11630+ 28767 #total inactive capacity AND, ARK, LP
-
 
 
 #subset (DOY 1: July 31st) from full timeseries -----
@@ -216,7 +215,7 @@ stor=matrix(data=NA, nrow = jul, ncol = 1)
 maxS=matrix(data=NA, nrow = jul, ncol = m)
 dS=matrix(data=NA, nrow = jul, ncol = 1)
 minFCq=matrix(data=NA, nrow = jul, ncol = 1)
-qo=matrix(data=NA, nrow = jul, ncol = 1)
+qo=matrix(data=NA, nrow = jul, ncol = 1) #modeled outflow from reservoir
 storF=matrix(data=NA, nrow = jul, ncol = 1)
 availStor=matrix(data=NA, nrow = jul, ncol = 1)
 
@@ -225,7 +224,7 @@ availStor=matrix(data=NA, nrow = jul, ncol = 1)
 #---------------------------------------------------------------
 #select Qin from matrix or array? - turn into funtion
 
-for (wy in 1:2){
+for (wy in 1:21){
   
   stor[1]<-FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
   Qin<- FC$Q[FC$WY == yrs[wy]]
@@ -267,40 +266,49 @@ for (wy in 1:2){
 }
 
 
+#plot the initial results
+for (wy in 1:21){
+  plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
+  lines(FC$stor[FC$WY == yrs[wy]], col='orange')
+  lines(FC$AF[FC$WY == yrs[wy]], col='green') 
+ 
+  #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
+  plot(FC$qo[FC$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
+  lines(qlim[,2], type='l', lty=3, col='grey17')
+  lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
+}
+
+
+
+#make a few plots - e.g number, timing and volume that the managers exceeded the maxS for the day - and other plots from the nicholas data site
+#determine average day they start drafting for irrigation - e.g. once dsdt is negative and never goes positive again
+
+#Days model exceeded max storage = 170
 exceed <- which(FC$stor > FC$maxS)
 exceedDate=matrix(data=NA, nrow = length(exceed), ncol = 2)
 exceedDate[,1] <- FC$WY[exceed]
 exceedDate[,2] <- FC$doy[exceed]
 hist(exceedDate[,2])
 
+#Days managers exceeded max storage limits = 228
+Mexceed <- which(FC$AF > FC$maxS)
+MexceedDate=matrix(data=NA, nrow = length(Mexceed), ncol = 2)
+MexceedDate[,1] <- FC$WY[Mexceed]
+MexceedDate[,2] <- FC$doy[Mexceed]
+hist(MexceedDate[,2])
+
 topped <- which(FC$stor > maxAF)
 FC$topped<- FC$stor > maxAF
 hist(FC$doy[FC$topped == 'TRUE'])
 
-#plot the initial results
-<<<<<<< HEAD
-for(wy in 1:2){
-=======
-for(wy in 1:4){
->>>>>>> cf84b827d47322571518133b0b24fad1b8f058f4
-  plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
-  lines(FC$stor[FC$WY == yrs[wy]], col='orange')
-  lines(FC$AF[FC$WY == yrs[wy]], col='green') 
-
-  #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
- # plot(FC$qo[FC$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
-#  lines(qlim[,2], type='l', lty=3, col='grey17')
- # lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
-}
-
-
-<<<<<<< HEAD
-#get direction of change in storage and last day of increasing sotrage
+#direction of change in storage and last day of increasing sotrage
 dervDS=matrix(data=NA, nrow = 195, ncol = 1)
+TotalQ=matrix(data=NA, nrow = 21, ncol = 1)
 DOY_decreasingS=matrix(data=NA, nrow = 21, ncol = 1)
 for (wy in 1:21){
   stor=FC$AF[FC$WY == yrs[wy]]
-  
+  Q=FC$Q[FC$WY == yrs[wy]]
+  TotalQ[wy] = sum(Q)
   for(i in 1:195){
     dervDS[i]=(stor[i+1]/stor[i])
   }
@@ -308,9 +316,10 @@ for (wy in 1:21){
   DOY_decreasingS[wy]=max(which(dervDS > 1))
 }
 
+#last day of increasing storage as a function of inflow
+plot(TotalQ, DOY_decreasingS)
 
 
-=======
-#make a few plots - e.g number, timing and volume that the managers exceeded the maxS for the day - and other plots from teh nicholas data site
-#determine average day they start drafting for irrigation - e.g. one dsdt is negative and never goes positive again
->>>>>>> cf84b827d47322571518133b0b24fad1b8f058f4
+
+
+
