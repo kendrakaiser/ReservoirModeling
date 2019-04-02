@@ -73,9 +73,6 @@ for (wy in 1:21){
 reqStor<- function(sumQin,doy){ 
  
   fvol<-round(sumQin/1000000, digits=1)
- # if (is.na(fvol)){
-  #  fcol = 1 #this forces forecast to == 0, because NAs spit out instead
-  #} else {}
   fcol<- as.numeric(fv$col[fv$fv == fvol])
   
   fcs<- as.numeric(fcVol[doy, fcol+2]) 
@@ -102,9 +99,6 @@ predMaxS<- function(m){
       for (it in day:(day+m-1)){
         count=count+1
         vF = volF - (volF/(jul-day))*(day-it) #predict maxS given equal distribution of inflow 
-        #print(day)
-        #print(vF)
-        #browser()
         reqS <- reqStor(vF, it) 
         maxS[day, count] <- (maxAF-reqS) #max storage today given the whole years inflow
       }
@@ -168,6 +162,7 @@ forecastS<-function(s,m,day){
 }  
 
 #evaluate change in storage in regard to the forecasted storage to prevent going over maxS
+#update discharge, change in storage and day+1 storage
 evalS<- function(Qin, day, stor, maxS, Qmin,s,m){
   
   if (storF[day] >= maxS[day,m] && day > s+1){ #&& day <188
@@ -212,16 +207,14 @@ evalS<- function(Qin, day, stor, maxS, Qmin,s,m){
   
   qo[day]<<-qo[day]
   dS[day]<<-dS[day]
-  #outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo))
 }
 
-
-#determine change in storage and outflow for any day of year
+#determine change in storage and outflow for a given water year and forecast window
 outflowStor<-function(wy,s,m){
   #   set up blank matricies 
   #------------------------------------------
   stor<<-matrix(data=NA, nrow = jul, ncol = 1)
-  maxS<<-matrix(data=NA, nrow = jul, ncol = 10) 
+  maxS<<-matrix(data=NA, nrow = jul, ncol = m) 
   availStor<<-matrix(data=NA, nrow = jul, ncol = 1)
   minFCq<<-matrix(data=NA, nrow = jul, ncol = 1)
   storF<<-matrix(data=NA, nrow = jul, ncol = 1)
@@ -233,9 +226,9 @@ outflowStor<-function(wy,s,m){
   #----- 
   stor[1] <<- FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
   Qin<- FC$Q[FC$WY == yrs[wy]]
-  MaxS <<- predMaxS(m) #vector of 198 days of max storage out to M days
+  maxS <<- predMaxS(m) #vector of 198 days of max storage out to M days
   
-  #-----
+  #----- run all the functions to get to discharge and updated storage
   for (day in 1:jul){ 
     volF<<- FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow  
     availStor[day] <<- maxAF-stor[day]
@@ -246,21 +239,12 @@ outflowStor<-function(wy,s,m){
       minFCq[day]<<-minReleaseApril(day, volF)
     }
     #minimum discharge is 240
-    if (minFCq[day] <<- minQ){
+    if (minFCq[day] < minQ){
       minFCq[day] <<- minQ
     } 
     
     forecastS(s,m,day)
-    
-    #resS <- 
-    evalS(Qin, day, stor, MaxS, minFCq, s, m)
-    
-    #qo[day]<- resS$qo[day]
-    #dS[day]<- resS$dS[day]
-    
-    #if (day < jul){
-     # stor[day+1]<-resS$stor[day+1] #AF in the reservoir
-    #}
+    evalS(Qin, day, stor, maxS, minFCq, s, m)
   }
   
   out<<- cbind(availStor, storF, stor, dS, minFCq, qo)
@@ -273,15 +257,21 @@ outflowStor<-function(wy,s,m){
 #   determine change in storage and outflow for any day of year
 #---------------------------------------------------------------
 #select Qin from matrix or array? how to save output better?
-#n: number of prior days to estimate change in storage
+#s: number of prior days to estimate change in storage
 #m: planning window
 m=10
 s=5
 wy=2
 results<-list()
 
+params<-cbind(c(2,2,2,2,2,2,2,2,2,2),c(1,2,3,4,5,6,7,8,9,10), c(1,2,3,4,5,6,7,8,9,10))
+
 for (wy in 1:21){
   results[[wy]]<- outflowStor(wy,5,10)
+}
+
+modelRun<-function(params){
+  return(mapply(outflowStor, params[,1], params[,2], params[,3]))
 }
 
 
