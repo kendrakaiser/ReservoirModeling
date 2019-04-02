@@ -88,7 +88,6 @@ reqStor<- function(sumQin,doy){
 
   return(fcs)
 } 
-
 #predict max storage in the next m days
 predMaxS<- function(m){
   for (day in 1:jul){
@@ -152,7 +151,6 @@ minReleaseApril<-function(day, volF){
   Qmin <- max(q15, q30)
   
 }
-
 #forecast what the storage would be in s days given previous ∆ in S and make those changes over m days
 forecastS<-function(s,m,day){
   if (day > s+1){
@@ -160,11 +158,9 @@ forecastS<-function(s,m,day){
     storF[day] <<- (dsdt*m)+stor[day] 
   } 
 }  
-
 #evaluate change in storage in regard to the forecasted storage to prevent going over maxS
 #update discharge, change in storage and day+1 storage
 evalS<- function(Qin, day, stor, maxS, Qmin,s,m){
-  
   if (storF[day] >= maxS[day,m] && day > s+1){ #&& day <188
     dsdtMax= (storF[day] - maxS[day,m])/s
     qo[day] <- Qmin[day] + (dsdtMax*v2f)
@@ -177,7 +173,6 @@ evalS<- function(Qin, day, stor, maxS, Qmin,s,m){
     minFCq[day] <- minFCq[day] + addQ
     flag= 'TRUE'
   } else {flag='FALSE'}
-  
   #if the calculated discharge is greater than +/- 500 set it to +/- 500
   if (flag == 'TRUE'){ #going over maxS or maxAF
     ramp= 1000
@@ -187,72 +182,75 @@ evalS<- function(Qin, day, stor, maxS, Qmin,s,m){
     qo[day] <- qo[day-1] + ramp
   } else if (qo[day] < (qo[day-1]-500) && day > 2 ){
     qo[day] <- qo[day-1]-500}
-  
-  if (availStor[day] <= (1000*v2f)){ #this puts a hard constraints on not topping the dam - but doesnt work 21 times
+  ###UPDATE here
+  #this puts a hard constraints on not topping the dam - but doesnt work 21 times
+  if (availStor[day] <= (1000*v2f)){ 
     qo[day] <- qo[day] + 1000
     availStor[day] <- availStor[day] + 1000*f2v
     stor[day] <- stor[day] - (1000*f2v)
   }
   
   dS[day] <- (Qin[day]- qo[day])*f2v
-  
-  if (stor[day] <= minS){ #dont let storage go below the minimum
+  #dont let storage go below the minimum
+  if (stor[day] <= minS){ 
     qo[day] <- minQ
     dS[day] <- -minQ*f2v 
   }
-  
+  #update storage for the next day
   if (day < jul){
     stor[day+1]<<-stor[day] + dS[day]  #AF in the reservoir
   }
-  
+  #write out values
   qo[day]<<-qo[day]
   dS[day]<<-dS[day]
 }
 
 #determine change in storage and outflow for a given water year and forecast window
-outflowStor<-function(wy,s,m){
-  #   set up blank matricies 
-  #------------------------------------------
-  stor<<-matrix(data=NA, nrow = jul, ncol = 1)
-  maxS<<-matrix(data=NA, nrow = jul, ncol = m) 
-  availStor<<-matrix(data=NA, nrow = jul, ncol = 1)
-  minFCq<<-matrix(data=NA, nrow = jul, ncol = 1)
-  storF<<-matrix(data=NA, nrow = jul, ncol = 1)
-  qo<<-matrix(data=NA, nrow = jul, ncol = 1) #modeled outflow from reservoir
-  dS<<-matrix(data=NA, nrow = jul, ncol = 1)
-  resS<<-matrix(data=NA, nrow = jul, ncol = 1)
-  #---------
-  # initalize
-  #----- 
-  stor[1] <<- FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
-  Qin<- FC$Q[FC$WY == yrs[wy]]
-  maxS <<- predMaxS(m) #vector of 198 days of max storage out to M days
+outflowStor<-function(s,m){
+  results<-list()
+  for (wy in 1:21){
+    #   set up blank matricies 
+    #------------------------------------------
+    stor<<-matrix(data=NA, nrow = jul, ncol = 1)
+    maxS<<-matrix(data=NA, nrow = jul, ncol = m) 
+    availStor<<-matrix(data=NA, nrow = jul, ncol = 1)
+    minFCq<<-matrix(data=NA, nrow = jul, ncol = 1)
+    storF<<-matrix(data=NA, nrow = jul, ncol = 1)
+    qo<<-matrix(data=NA, nrow = jul, ncol = 1) #modeled outflow from reservoir
+    dS<<-matrix(data=NA, nrow = jul, ncol = 1)
+    resS<<-matrix(data=NA, nrow = jul, ncol = 1)
+    #---------
+    # initalize
+    #----- 
+    stor[1] <<- FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
+    Qin<- FC$Q[FC$WY == yrs[wy]]
+    maxS <<- predMaxS(m) #vector of 198 days of max storage out to M days
   
-  #----- run all the functions to get to discharge and updated storage
-  for (day in 1:jul){ 
-    volF<<- FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow  
-    availStor[day] <<- maxAF-stor[day]
-    # Min flood control release for storage goals on April 1 and every 15 days after
-    if (day < 91){
+    #----- run all the functions to get to discharge and updated storage
+      for (day in 1:jul){ 
+      volF<<- FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow  
+      availStor[day] <<- maxAF-stor[day]
+      # Min flood control release for storage goals on April 1 and every 15 days after
+      if (day < 91){
       minFCq[day]<<-minRelease(day, volF)
     } else {
       minFCq[day]<<-minReleaseApril(day, volF)
     }
-    #minimum discharge is 240
-    if (minFCq[day] < minQ){
+     #minimum discharge is 240
+       if (minFCq[day] < minQ){
       minFCq[day] <<- minQ
     } 
     
     forecastS(s,m,day)
     evalS(Qin, day, stor, maxS, minFCq, s, m)
-  }
+    }
   
-  out<<- cbind(availStor, storF, stor, dS, minFCq, qo)
-  colnames(out)<-c("availStor", "storF", 'stor', 'dS', 'minFCq', 'qo')
-  return(out)
+    out<<- cbind(maxS[,1],availStor, storF, stor, dS, minFCq, qo)
+    colnames(out)<-c('maxS', 'availStor', 'storF', 'stor', 'dS', 'minFCq', 'qo')
+    results[[wy]]<-out
+  }
+  return(results)
 }
-
-
 #---------------------------------------------------------------
 #   determine change in storage and outflow for any day of year
 #---------------------------------------------------------------
@@ -261,28 +259,27 @@ outflowStor<-function(wy,s,m){
 #m: planning window
 m=10
 s=5
-wy=2
-results<-list()
 
-params<-cbind(c(2,2,2,2,2,2,2,2,2,2),c(1,2,3,4,5,6,7,8,9,10), c(1,2,3,4,5,6,7,8,9,10))
+params<-cbind(c(1,2,3,4,5,6,7,8,9,10), c(1,2,3,4,5,6,7,8,9,10))
 
-for (wy in 1:21){
-  results[[wy]]<- outflowStor(wy,5,10)
-}
+#results<-outflowStor(5,10)
+
+
+library(pse)
 
 modelRun<-function(params){
-  return(mapply(outflowStor, params[,1], params[,2], params[,3]))
+  return(mapply(outflowStor, params[,1], params[,2]))
 }
 
 
 #plot the initial results
-for (wy in 1:21){
-  plot(FC$maxS[FC$WY == yrs[wy]], type='l', ylim=c(300000, 1010200))
-  lines(FC$stor[FC$WY == yrs[wy]], col='orange')
-  lines(FC$AF[FC$WY == yrs[wy]], col='green') 
+for (wy in 1:2){
+  plot(results[[wy]][,1], type='l', ylim=c(300000, 1010200)) #max storage
+  lines(results[[wy]][,4], col='orange') #modeled storage
+  lines(FC$AF[FC$WY == yrs[wy]], col='green') #actual storage
  
   #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
-  plot(FC$qo[FC$WY == yrs[wy]], type='l', lty=3, col='orange', ylim=c(0,16000))
+  plot(results[[wy]][,7], type='l', lty=3, col='orange', ylim=c(0,16000)) #modeled discharge
   lines(qlim[,2], type='l', lty=3, col='grey17')
   lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
 }
@@ -291,7 +288,7 @@ for (wy in 1:21){
 
 #make a few plots - e.g number, timing and volume that the managers exceeded the maxS for the day - and other plots from the nicholas data site
 #determine average day they start drafting for irrigation - e.g. once dsdt is negative and never goes positive again
-
+#--------------
 #Days model exceeded max storage = 170
 exceed <- which(FC$stor > FC$maxS)
 exceedDate=matrix(data=NA, nrow = length(exceed), ncol = 2)
