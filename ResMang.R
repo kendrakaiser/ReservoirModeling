@@ -1,6 +1,6 @@
 #import, sum storage for Anderson Ranch, Arrowrock, and Lucky Peak Reservoirs
-#setwd("~/Documents/GitRepos/ReservoirModeling")
-setwd("D:/Documents/GitRepos/ReservoirModeling")
+setwd("~/Documents/GitRepos/ReservoirModeling")
+#setwd("D:/Documents/GitRepos/ReservoirModeling")
 
 #--------------------------------------
 # Import reservoir data 
@@ -73,9 +73,10 @@ for (wy in 1:21){
 reqStor<- function(sumQin,doy){ 
  
   fvol<-round(sumQin/1000000, digits=1)
-  if (is.na(fvol)){
-    fcol = 1 #this forces forecast to == 0, because NAs spit out instead
-  } else {fcol<- as.numeric(fv$col[fv$fv == fvol])}
+ # if (is.na(fvol)){
+  #  fcol = 1 #this forces forecast to == 0, because NAs spit out instead
+  #} else {}
+  fcol<- as.numeric(fv$col[fv$fv == fvol])
   
   fcs<- as.numeric(fcVol[doy, fcol+2]) 
   #Winter flood control space (low flow years Plate 7-2) ----
@@ -97,11 +98,14 @@ predMaxS<- function(m){
     volF <- FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow
     count=0
     
-    if (volF >= 0 && day< jul){
+    if (volF >= 0 && day < (jul-m)){
       for (it in day:(day+m-1)){
         count=count+1
         vF = volF - (volF/(jul-day))*(day-it) #predict maxS given equal distribution of inflow 
-        reqS<- reqStor(vF, it) 
+        #print(day)
+        #print(vF)
+        #browser()
+        reqS <- reqStor(vF, it) 
         maxS[day, count] <- (maxAF-reqS) #max storage today given the whole years inflow
       }
     } else {storD <- 0}
@@ -111,7 +115,7 @@ predMaxS<- function(m){
   return(maxS)
 }
 #determine minimum daily release before April 1
-minRelease<- function(day){
+minRelease<- function(day, volF){
   ix= which(prj$start <= day & prj$end >= day)
   vol1 = volF*prj$b[ix] + prj$c[ix]
   if (prj$start[ix] != day){
@@ -124,12 +128,12 @@ minRelease<- function(day){
   FCvolAP<- reqStor(volFresid, 91) #flood control space required on april 1
   minEvac<- FCvolAP - availStor[day] #minimum evaculation btw today and April 1
   minReleaseVol <- minEvac+volFmar
-  Qmin<- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
+  Qmin <- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
   
   ##If statements that constrain for high flows and ramp rates?
 }
 #determine minimum daily release after April 1
-minReleaseApril<-function(day){
+minReleaseApril<-function(day, volF){
   ix30 = findInterval(day, prjAP$doy)
   ix15=ix30-1
   volF_target15 <- volF*prjAP$b[ix15] + prjAP$c[ix15]
@@ -151,7 +155,7 @@ minReleaseApril<-function(day){
     q15<-(minReleaseVol15*v2f)/(jul-day+1)
   } else {q15 <- minQ}
   
-  Qmin<- max(q15, q30)
+  Qmin <- max(q15, q30)
   
 }
 
@@ -159,8 +163,8 @@ minReleaseApril<-function(day){
 forecastS<-function(s,m,day){
   if (day > s+1){
     dsdt= (stor[day] - stor[day-s])/s
-    storF[day] <- (dsdt*m)+stor[day] 
-  }
+    storF[day] <<- (dsdt*m)+stor[day] 
+  } 
 }  
 
 #evaluate change in storage in regard to the forecasted storage to prevent going over maxS
@@ -206,36 +210,50 @@ evalS<- function(Qin, day, stor, maxS, Qmin,s,m){
     stor[day+1]<<-stor[day] + dS[day]  #AF in the reservoir
   }
   
-  #outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo, "storF"=storF))
+  qo[day]<<-qo[day]
+  dS[day]<<-dS[day]
+  #outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo))
 }
 
 
 #determine change in storage and outflow for any day of year
 outflowStor<-function(wy,s,m){
-  
-  stor[1] <- FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
+  #   set up blank matricies 
+  #------------------------------------------
+  stor<<-matrix(data=NA, nrow = jul, ncol = 1)
+  maxS<<-matrix(data=NA, nrow = jul, ncol = 10) 
+  availStor<<-matrix(data=NA, nrow = jul, ncol = 1)
+  minFCq<<-matrix(data=NA, nrow = jul, ncol = 1)
+  storF<<-matrix(data=NA, nrow = jul, ncol = 1)
+  qo<<-matrix(data=NA, nrow = jul, ncol = 1) #modeled outflow from reservoir
+  dS<<-matrix(data=NA, nrow = jul, ncol = 1)
+  resS<<-matrix(data=NA, nrow = jul, ncol = 1)
+  #---------
+  # initalize
+  #----- 
+  stor[1] <<- FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
   Qin<- FC$Q[FC$WY == yrs[wy]]
-  maxS <- predMaxS(m) #vector of 198 days of max storage out to M days
-
+  MaxS <<- predMaxS(m) #vector of 198 days of max storage out to M days
+  
+  #-----
   for (day in 1:jul){ 
-    volF<- FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow  
-    availStor[day] <- maxAF-stor[day]
-    
+    volF<<- FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow  
+    availStor[day] <<- maxAF-stor[day]
     # Min flood control release for storage goals on April 1 and every 15 days after
     if (day < 91){
-      minFCq[day]<-minRelease(day)
+      minFCq[day]<<-minRelease(day, volF)
     } else {
-      minFCq[day]<-minReleaseApril(day)
+      minFCq[day]<<-minReleaseApril(day, volF)
     }
     #minimum discharge is 240
-    if (minFCq[day] < minQ){
-      minFCq[day] <- minQ
+    if (minFCq[day] <<- minQ){
+      minFCq[day] <<- minQ
     } 
     
     forecastS(s,m,day)
     
     #resS <- 
-    evalS(Qin, day, stor, maxS, minFCq, s, m)
+    evalS(Qin, day, stor, MaxS, minFCq, s, m)
     
     #qo[day]<- resS$qo[day]
     #dS[day]<- resS$dS[day]
@@ -244,20 +262,13 @@ outflowStor<-function(wy,s,m){
      # stor[day+1]<-resS$stor[day+1] #AF in the reservoir
     #}
   }
-  outlist<-(list("stor"=stor, "dS"=dS, "qo"=qo, "storF"=storF, 'availStor'=availStor, 'maxS'=maxS, 'resS'=resS, 'minFCq'=minFCq))
+  
+  out<<- cbind(availStor, storF, stor, dS, minFCq, qo)
+  colnames(out)<-c("availStor", "storF", 'stor', 'dS', 'minFCq', 'qo')
+  return(out)
 }
 
-#-------------------------------------------------------------
-#   set up blank matricies 
-#------------------------------------------------------------
-stor=matrix(data=NA, nrow = jul, ncol = 1)
-maxS=matrix(data=NA, nrow = jul, ncol = 10) 
-availStor=matrix(data=NA, nrow = jul, ncol = 1)
-minFCq=matrix(data=NA, nrow = jul, ncol = 1)
-storF=matrix(data=NA, nrow = jul, ncol = 1)
-qo=matrix(data=NA, nrow = jul, ncol = 1) #modeled outflow from reservoir
-dS=matrix(data=NA, nrow = jul, ncol = 1)
-resS=matrix(data=NA, nrow = jul, ncol = 1)
+
 #---------------------------------------------------------------
 #   determine change in storage and outflow for any day of year
 #---------------------------------------------------------------
@@ -267,8 +278,11 @@ resS=matrix(data=NA, nrow = jul, ncol = 1)
 m=10
 s=5
 wy=2
+results<-list()
 
-outflowStor(2,5,10)
+for (wy in 1:21){
+  results[[wy]]<- outflowStor(wy,5,10)
+}
 
 
 #plot the initial results
