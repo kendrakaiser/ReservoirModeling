@@ -267,9 +267,18 @@ params<-cbind(c(1,2,3,4,5,6,7,8,9,10), c(1,2,3,4,5,6,7,8,9,10))
 
 library(pse)
 
+Factors<-c("s", "m")
+
+qArg<- list(list("p" = 100, "min"=1, "max"=10), list("p" = 100, "min"=1, "max"=15))
+
+qdunif<-function(p, min, max){
+  floor(qunif(p, min, max))}
+
 modelRun<-function(params){
   return(mapply(outflowStor, params[,1], params[,2]))
 }
+
+myLHS <-LHS(model = modelRun, factors= Factors, N=100, qdunif, qArg, nboot=5)
 
 
 #plot the initial results
