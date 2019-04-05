@@ -68,6 +68,8 @@ for (wy in 1:21){
 #       DEFINE FUNCTIONS 
 ##--------------------------------------
 
+##INITALIZE storF with the intial storage of the reservoir
+
 # REQUIRED storage - lookup day of year, inflow volume ----
 # plate 7-1 and plate 7-3 - Needs sum of timeseries
 reqStor<- function(sumQin,doy){ 
@@ -267,18 +269,20 @@ params<-cbind(c(1,2,3,4,5,6,7,8,9,10), c(1,2,3,4,5,6,7,8,9,10))
 
 library(pse)
 
-Factors<-c("s", "m")
+factors<-c("s", "m")
 
-qArg<- list(list("p" = 100, "min"=1, "max"=10), list("p" = 100, "min"=1, "max"=15))
+q.arg<- list(list("min"=1, "max"=10), list("min"=1, "max"=15))
+names(q.arg)<-c("s", "m")
 
 qdunif<-function(p, min, max){
   floor(qunif(p, min, max))}
+#do.call(qdunif, q.arg$s) <- this works
 
 modelRun<-function(params){
   return(mapply(outflowStor, params[,1], params[,2]))
 }
 
-myLHS <-LHS(model = modelRun, factors= Factors, N=100, qdunif, qArg, nboot=5)
+myLHS <-LHS(model = modelRun, factors, N=100, q='qdunif', q.arg, nboot=5)
 
 
 #plot the initial results
@@ -293,7 +297,9 @@ for (wy in 1:2){
   lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
 }
 
-
+foo <- function(x,...){
+     print(list(...))
+   }
 
 #make a few plots - e.g number, timing and volume that the managers exceeded the maxS for the day - and other plots from the nicholas data site
 #determine average day they start drafting for irrigation - e.g. once dsdt is negative and never goes positive again
