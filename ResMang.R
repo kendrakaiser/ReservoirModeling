@@ -158,7 +158,7 @@ forecastS<-function(s,m,day){
   if (day > s+1){
     dsdt= (stor[day] - stor[day-s])/s
     storF[day] <<- (dsdt*m)+stor[day] 
-  } 
+  } else {storF[day]<<- stor[day]}
 }  
 #evaluate change in storage in regard to the forecasted storage to prevent going over maxS
 #update discharge, change in storage and day+1 storage
@@ -264,9 +264,6 @@ s=5
 
 params<-cbind(c(1,2,3,4,5,6,7,8,9,10), c(1,2,3,4,5,6,7,8,9,10))
 
-#results<-outflowStor(5,10)
-
-
 library(pse)
 
 factors<-c("s", "m")
@@ -282,7 +279,7 @@ modelRun<-function(params){
   return(mapply(outflowStor, params[,1], params[,2]))
 }
 
-myLHS <-LHS(model = modelRun, factors, N=100, q='qdunif', q.arg, nboot=5)
+myLHS <-LHS(model = modelRun, factors, N=10, q='qdunif', q.arg, nboot=5)
 
 
 #plot the initial results
