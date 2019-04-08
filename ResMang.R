@@ -210,6 +210,7 @@ evalS<- function(Qin, day, stor, maxS, Qmin,s,m){
 #determine change in storage and outflow for a given water year and forecast window
 outflowStor<-function(s,m){
   results<-list()
+  discharge<-matrix(data=NA, nrow = jul, ncol=21)
   for (wy in 1:21){
     #   set up blank matricies 
     #------------------------------------------
@@ -220,7 +221,6 @@ outflowStor<-function(s,m){
     storF<<-matrix(data=NA, nrow = jul, ncol = 1)
     qo<<-matrix(data=NA, nrow = jul, ncol = 1) #modeled outflow from reservoir
     dS<<-matrix(data=NA, nrow = jul, ncol = 1)
-    resS<<-matrix(data=NA, nrow = jul, ncol = 1)
     #---------
     # initalize
     #----- 
@@ -250,8 +250,11 @@ outflowStor<-function(s,m){
     out<<- cbind(maxS[,1],availStor, storF, stor, dS, minFCq, qo)
     colnames(out)<-c('maxS', 'availStor', 'storF', 'stor', 'dS', 'minFCq', 'qo')
     results[[wy]]<-out
+    discharge[,wy]<-qo
+    
   }
-  return(results)
+  Q<-c(discharge)
+  return(Q)
 }
 #---------------------------------------------------------------
 #   determine change in storage and outflow for any day of year
@@ -279,8 +282,31 @@ modelRun<-function(params){
   return(mapply(outflowStor, params[,1], params[,2]))
 }
 
-myLHS <-LHS(model = modelRun, factors, N=10, q='qdunif', q.arg, nboot=5)
+out<-modelRun(params)
+myLHS <-LHS(model = modelRun, factors, N=8, q='qdunif', q.arg, nboot=4)
+nullLHS <-LHS(model = NULL, factors, N=100, q='qdunif', q.arg, nboot=4)
 
+print.LHS <- function(x, ...) {
+   	  cat("\nCall:\n", deparse(x$call), "\n", sep = "")
+   	  cat("Model:\n"); print (x$model);
+   	  cat("Factors:\n"); print (x$factors);
+   	  cat("Results:\n"); print (x$res.names);
+   	  cat("PRCC:\n"); print (x$prcc);
+}
+
+tstr<-print.LHS(myLHS)
+tstr[[1]][["y"]]
+
+data<-myLHS$data
+index.res<-1:get.noutputs(myLHS)
+index.data <- 1:get.ninputs(myLHS)
+res<-myLHS$res
+
+dat <- as.vector(get.results(myLHS)[,index.res[1]])
+g <- rep(index.res, each=dim(obj$res)[1])
+Ecdf(dat, group=g, col=col, xlab=xlab, ...)
+
+plotecdf(myLHS)
 
 #plot the initial results
 for (wy in 1:2){
