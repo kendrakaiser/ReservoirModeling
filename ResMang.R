@@ -247,66 +247,22 @@ outflowStor<-function(s,m){
     evalS(Qin, day, stor, maxS, minFCq, s, m)
     }
   
-    out<<- cbind(maxS[,1],availStor, storF, stor, dS, minFCq, qo)
-    colnames(out)<-c('maxS', 'availStor', 'storF', 'stor', 'dS', 'minFCq', 'qo')
-    results[[wy]]<-out
+    #out<<- cbind(maxS[,1],availStor, storF, stor, dS, minFCq, qo)
+    #colnames(out)<-c('maxS', 'availStor', 'storF', 'stor', 'dS', 'minFCq', 'qo')
+    #results[[wy]]<-out
     discharge[,wy]<-qo
     
   }
   Q<-c(discharge)
   return(Q)
 }
-#---------------------------------------------------------------
-#   determine change in storage and outflow for any day of year
-#---------------------------------------------------------------
-#select Qin from matrix or array? how to save output better?
-#s: number of prior days to estimate change in storage
-#m: planning window
+
+
 m=10
 s=5
 
-params<-cbind(c(1,2,3,4,5,6,7,8,9,10), c(1,2,3,4,5,6,7,8,9,10))
 
-library(pse)
 
-factors<-c("s", "m")
-
-q.arg<- list(list("min"=1, "max"=10), list("min"=1, "max"=15))
-names(q.arg)<-c("s", "m")
-
-qdunif<-function(p, min, max){
-  floor(qunif(p, min, max))}
-#do.call(qdunif, q.arg$s) <- this works
-
-modelRun<-function(params){
-  return(mapply(outflowStor, params[,1], params[,2]))
-}
-
-out<-modelRun(params)
-myLHS <-LHS(model = modelRun, factors, N=8, q='qdunif', q.arg, nboot=4)
-nullLHS <-LHS(model = NULL, factors, N=100, q='qdunif', q.arg, nboot=4)
-
-print.LHS <- function(x, ...) {
-   	  cat("\nCall:\n", deparse(x$call), "\n", sep = "")
-   	  cat("Model:\n"); print (x$model);
-   	  cat("Factors:\n"); print (x$factors);
-   	  cat("Results:\n"); print (x$res.names);
-   	  cat("PRCC:\n"); print (x$prcc);
-}
-
-tstr<-print.LHS(myLHS)
-tstr[[1]][["y"]]
-
-data<-myLHS$data
-index.res<-1:get.noutputs(myLHS)
-index.data <- 1:get.ninputs(myLHS)
-res<-myLHS$res
-
-dat <- as.vector(get.results(myLHS)[,index.res[1]])
-g <- rep(index.res, each=dim(obj$res)[1])
-Ecdf(dat, group=g, col=col, xlab=xlab, ...)
-
-plotecdf(myLHS)
 
 #plot the initial results
 for (wy in 1:2){
@@ -320,9 +276,6 @@ for (wy in 1:2){
   lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
 }
 
-foo <- function(x,...){
-     print(list(...))
-   }
 
 #make a few plots - e.g number, timing and volume that the managers exceeded the maxS for the day - and other plots from the nicholas data site
 #determine average day they start drafting for irrigation - e.g. once dsdt is negative and never goes positive again
