@@ -46,32 +46,34 @@ out_M<-modelRun(mLHS$data)
 wy_Q<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
 count=0
 for (i in 1:21){
-  for (j in 1:n){
+  for (j in 1:r){
     count=count+1
-    wy_Q[[i]][,j]<- outB[[count]][,5]
+    wy_Q[[i]][,j]<- outB[[i+(i*r)]][,5] #I dont think this is right 
   }
 }
 
-matplot(wy_Q[[1]], type='l')
-#Mean discharge for each day under all model runs with confidence intervals
+matplot(wy_Q[[7]], type='l')
 
-plot(outB[[1]][,5], type='l')
-for (i in 2:50){
-  lines(outB[[i]][,5])
+
+#--------------------------------
+#Mean discharge for each day under all model runs with confidence intervals
+#--------------------------------
+
+OutMeans<-matrix(data=NA, nrow = 196, ncol = 21)
+z<-lapply(1:21, matrix, data=NA, nrow = 196, ncol =2)
+sd_doy<-matrix(data=NA, nrow = 196, ncol = 21)
+for (i in 1:21){
+  OutMeans[,i]<-rowMeans(wy_Q[[i]], na.rm = FALSE, dims = 1)
+  z[[i]]<-apply(wy_Q[[i]], 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
+  sd_doy[,i]<- apply(wy_Q[[i]], 1, sd)
 }
 
+matplot(OutMeans, type='l')
 
-OutMeans<-matrix(data=NA, nrow = 4116, ncol = 3)
-
-OutMeans[,1]<-rowMeans(outB, na.rm = FALSE, dims = 1)
 OutMeans[,2]<-rowMeans(out_S, na.rm = FALSE, dims = 1)
 OutMeans[,3]<-rowMeans(out_M, na.rm = FALSE, dims = 1)
-
-z<-apply(outB, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
 zS<-apply(out_S, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
 zM<-apply(out_M, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
-
-sd_all<- apply(outB, 1, sd)
 sd_S<- apply(out_S, 1, sd)
 sd_M<- apply(out_M, 1, sd)
 
