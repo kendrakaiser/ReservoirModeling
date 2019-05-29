@@ -247,7 +247,7 @@ outflowStor<-function(s,m){
     evalS(Qin, day, stor, maxS, minFCq, s, m)
     }
   
-    out<<- cbind(maxS[,1], storF, stor, minFCq, qo) #availStor dS,
+    out<- cbind(maxS[,1], storF, stor, minFCq, qo) #availStor dS,
     colnames(out)<-c('maxS','storF', 'stor', 'minQ', 'qo')
     results[[wy]]<-out
     #discharge[,wy]<-qo
