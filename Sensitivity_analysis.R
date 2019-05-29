@@ -5,7 +5,7 @@
 
 library(pse)
 
-#define probability function
+#define probability function - discrete uniform density function for integer parameters
 qdunif<-function(p, min, max){
   floor(qunif(p, min, max))}
 #wrap model
@@ -18,37 +18,60 @@ q.arg<- list(list("min"=1, "max"=10), list("min"=1, "max"=15))
 names(q.arg)<-c("s", "m")
 factors<-c("s", "m")
 
+
+#myLHS<-LHS(model=modelRun, factors, N=100, q='qdunif', q.arg, nboot=4)
+n=100
 #create hypercube 
-bothLHS <-LHS(model = NULL, factors, N=100, q='qdunif', q.arg, nboot=4)
-bothparams<-bothLHS$data
+bothLHS <-LHS(model = NULL, factors, N=n, q='qdunif', q.arg, nboot=1)
+#bothLHS<-tell(bothLHS, bothLHS$data) #res<-get.results(bothLHS)
+outB<-modelRun(bothLHS$data)
+
+#pse plots -- not sure how helpful
+#plotscatter(bothLHS,index.res=c(5, 8, 10),  add.lm=FALSE)#stack=TRUE, index.res=c(250, 255, 260)
+#plotecdf(bothLHS, stack=TRUE)
+#plotprcc(bothLHS, stack=TRUE)
 
 #set only S to change
-q.arg<- list(list("min"=1, "max"=10), list("min"=6, "max"=8))
-sLHS<-LHS(model = NULL, factors, N=50, q='qdunif', q.arg, nboot=4)
-Sparams<-sLHS$data
-
+q.argS<- list(list("min"=1, "max"=10), list("min"=6, "max"=8))
+sLHS<-LHS(model = NULL, factors, N=n, q='qdunif', q.argS, nboot=1)
+out_S<-modelRun(sLHS$data)
 #set only M to change
-q.arg<- list(list("min"=2, "max"=6), list("min"=1, "max"=15))
-mLHS<-LHS(model = NULL, factors, N=100, q='qdunif', q.arg, nboot=4)
-Mparams<-mLHS$data
-
-out<-modelRun(bothparams)
-out_S<-modelRun(Sparams)
-out_M<-modelRun(Mparams)
+q.argM<- list(list("min"=2, "max"=6), list("min"=1, "max"=15))
+mLHS<-LHS(model = NULL, factors, N=n, q='qdunif', q.argM, nboot=4)
+out_M<-modelRun(mLHS$data)
 
 #--------------------------------
+# Re-organize output for analysis
+#--------------------------------
+wy_Q<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
+count=0
+for (i in 1:21){
+  for (j in 1:n){
+    count=count+1
+    wy_Q[[i]][,j]<- outB[[count]][,5]
+  }
+}
+
+matplot(wy_Q[[1]], type='l')
+#Mean discharge for each day under all model runs with confidence intervals
+
+plot(outB[[1]][,5], type='l')
+for (i in 2:50){
+  lines(outB[[i]][,5])
+}
+
 
 OutMeans<-matrix(data=NA, nrow = 4116, ncol = 3)
 
-OutMeans[,1]<-rowMeans(out, na.rm = FALSE, dims = 1)
+OutMeans[,1]<-rowMeans(outB, na.rm = FALSE, dims = 1)
 OutMeans[,2]<-rowMeans(out_S, na.rm = FALSE, dims = 1)
 OutMeans[,3]<-rowMeans(out_M, na.rm = FALSE, dims = 1)
 
-z<-apply(out, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
+z<-apply(outB, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
 zS<-apply(out_S, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
 zM<-apply(out_M, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
 
-sd_all<- apply(out, 1, sd)
+sd_all<- apply(outB, 1, sd)
 sd_S<- apply(out_S, 1, sd)
 sd_M<- apply(out_M, 1, sd)
 
@@ -57,6 +80,7 @@ lines(1:4116, sd_S, type='l', col='green')
 lines(1:4116, sd_M, type='l', col='blue')
 
 #--------------------------------
+#calculate days over the discharge limits, and total volume over discharge limits as a function of s/m
 
 days_over<-matrix(data=NA, nrow = 21, ncol = 100)
 vol_over<-matrix(data=NA, nrow = 21, ncol = 100)
@@ -143,11 +167,6 @@ for (wy in 1:21){
 
 #cumulative sum of discahrge
 
-
-
-
-
-
 matplot(OutSum, type='l', col='blue')
 lines(FC$doy[1:jul], obsSum, type='l', col='black', lwd='2')
 
@@ -179,5 +198,5 @@ g <- rep(index.res, each=dim(obj$res)[1])
 Ecdf(dat, group=g, col=col, xlab=xlab, ...)
 
 plotprcc(myLHS, stack=TRUE)
-plotscatter(myLHS, index.res=c(15, 30, 60), add.lm=FALSE)
+plotscatter(myLHS, index.res=c(250, 255, 260), add.lm=FALSE)
 plotprcc(myLHS, index.res=c(15, 30, 60, 90, 120, 150))
