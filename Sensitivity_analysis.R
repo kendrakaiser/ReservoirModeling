@@ -20,17 +20,11 @@ factors<-c("s", "m")
 
 
 #myLHS<-LHS(model=modelRun, factors, N=100, q='qdunif', q.arg, nboot=4)
-n=10
+n=100
 #create hypercube 
 bothLHS <-LHS(model = NULL, factors, N=n, q='qdunif', q.arg, nboot=1)
 #bothLHS<-tell(bothLHS, bothLHS$data) #res<-get.results(bothLHS)
 outB<-modelRun(bothLHS$data)
-r=seq(2,length(outB),2)
-
-plot(outB[[2]][,5], type='l')
-for (i in 2:10){
-  lines(outB[[r[i]]][,5])
-}
 
 #pse plots -- not sure how helpful
 #plotscatter(bothLHS,index.res=c(5, 8, 10),  add.lm=FALSE)#stack=TRUE, index.res=c(250, 255, 260)
@@ -49,20 +43,50 @@ out_M<-modelRun(mLHS$data)
 #------------------------------------------------------------------------------------------------
 # Re-organize output for analysis - all runs for each wy in one matrix
 #------------------------------------------------------------------------------------------------
-wy_Q<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
-wy_stor<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
-reps = seq(1, length(outB), 21)
+cleanData<-function(LHSrun){
+  wy_Q<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
+  wy_stor<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
+  reps = seq(1, length(LHSrun), 21)
 
-count=0
-for (i in 1:21){
-  for (j in 1:n){
-    wy_Q[[i]][,j]<- outB[[reps[j]+count]][,5]
-    wy_stor[[i]][,j]<- outB[[reps[j]+count]][,3]
+  count=0
+  for (i in 1:21){
+    for (j in 1:n){
+      wy_Q[[i]][,j]<- LHSrun[[reps[j]+count]][,5]
+      wy_stor[[i]][,j]<- LHSrun[[reps[j]+count]][,3]
+    }
+    count=count+1
   }
-  count=count+1
+  out<-list(wy_Q, wy_stor)
+  names(out)<-(c("Q", "stor"))
+  return(out)
 }
 
-matplot(wy_stor[[8]], type='l') ### this will be a useful plot when color coded to m/s values
+both<-cleanData(outB)
+sOut<-cleanData(out_S)
+mOut<-cleanData(out_M)
+
+
+pal <- colorRampPalette(c("yellow", "green", "blue"))
+
+StorSensPlot<-function(LHS, vals, wy, sm, dataOut){
+  paramVal<-data.matrix(LHS$data[sm])
+  colRamp<-pal(vals)[as.numeric(cut(paramVal,breaks = vals))]
+  return(matplot(dataOut$stor[[wy]], type='l', col = colRamp)) ### color coded to m/s values
+}
+
+QSensPlot<-function(LHS, vals, wy, sm, dataOut){
+  paramVal<-data.matrix(LHS$data[sm])
+  colRamp<-pal(vals)[as.numeric(cut(paramVal,breaks = vals))]
+  return(matplot(dataOut$Q[[wy]], type='l', col = colRamp)) ### color coded to m/s values
+}
+
+par(mfrow=c(2,2))
+
+StorSensPlot(mLHS, 15, 10, 'm', mOut)
+StorSensPlot(sLHS, 10, 10, 's', sOut)
+QSensPlot(mLHS, 15, 10, 'm', mOut)
+QSensPlot(sLHS, 10, 10, 's', sOut)
+
 
 
 #------------------------------------------------------------------------------------------------
@@ -80,6 +104,7 @@ for (i in 1:21){
 
 matplot(OutMeans, type='l')
 
+#same for indiivdual variables
 OutMeans[,2]<-rowMeans(out_S, na.rm = FALSE, dims = 1)
 OutMeans[,3]<-rowMeans(out_M, na.rm = FALSE, dims = 1)
 zS<-apply(out_S, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
@@ -91,14 +116,14 @@ plot(sd_all, type='l')
 lines(1:4116, sd_S, type='l', col='green')
 lines(1:4116, sd_M, type='l', col='blue')
 
-#--------------------------------
-#calculate days over the discharge limits, and total volume over discharge limits as a function of s/m
-
-days_over<-matrix(data=NA, nrow = 21, ncol = 100)
-vol_over<-matrix(data=NA, nrow = 21, ncol = 100)
-for (i in 1: 100){
+#------------------------------------------------------------------------------------------------
+# calculate days over the discharge limits, and total volume over discharge limits as a function of s/m
+#------------------------------------------------------------------------------------------------
+days_over<-matrix(data=NA, nrow = 21, ncol = n)
+vol_over<-matrix(data=NA, nrow = 21, ncol = n)
+for (i in 1:n){
   for (wy in 1:21){
-    wy_out= out[FC$WY == yrs[wy],i]
+    wy_out= outB[wy,i]
     ids<-which(wy_out > 10000)
     days_over[wy, i] = length(ids)
     vol_over[wy, i] =sum(wy_out[ids] -10000)
