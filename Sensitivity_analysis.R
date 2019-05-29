@@ -20,11 +20,17 @@ factors<-c("s", "m")
 
 
 #myLHS<-LHS(model=modelRun, factors, N=100, q='qdunif', q.arg, nboot=4)
-n=100
+n=10
 #create hypercube 
 bothLHS <-LHS(model = NULL, factors, N=n, q='qdunif', q.arg, nboot=1)
 #bothLHS<-tell(bothLHS, bothLHS$data) #res<-get.results(bothLHS)
 outB<-modelRun(bothLHS$data)
+r=seq(2,length(outB),2)
+
+plot(outB[[2]][,5], type='l')
+for (i in 2:10){
+  lines(outB[[r[i]]][,5])
+}
 
 #pse plots -- not sure how helpful
 #plotscatter(bothLHS,index.res=c(5, 8, 10),  add.lm=FALSE)#stack=TRUE, index.res=c(250, 255, 260)
@@ -40,24 +46,28 @@ q.argM<- list(list("min"=2, "max"=6), list("min"=1, "max"=15))
 mLHS<-LHS(model = NULL, factors, N=n, q='qdunif', q.argM, nboot=4)
 out_M<-modelRun(mLHS$data)
 
-#--------------------------------
-# Re-organize output for analysis
-#--------------------------------
+#------------------------------------------------------------------------------------------------
+# Re-organize output for analysis - all runs for each wy in one matrix
+#------------------------------------------------------------------------------------------------
 wy_Q<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
+wy_stor<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
+reps = seq(1, length(outB), 21)
+
 count=0
 for (i in 1:21){
-  for (j in 1:r){
-    count=count+1
-    wy_Q[[i]][,j]<- outB[[i+(i*r)]][,5] #I dont think this is right 
+  for (j in 1:n){
+    wy_Q[[i]][,j]<- outB[[reps[j]+count]][,5]
+    wy_stor[[i]][,j]<- outB[[reps[j]+count]][,3]
   }
+  count=count+1
 }
 
-matplot(wy_Q[[7]], type='l')
+matplot(wy_stor[[8]], type='l') ### this will be a useful plot when color coded to m/s values
 
 
-#--------------------------------
-#Mean discharge for each day under all model runs with confidence intervals
-#--------------------------------
+#------------------------------------------------------------------------------------------------
+# Mean discharge for each day of each water year under all model runs and confidence intervals
+#------------------------------------------------------------------------------------------------
 
 OutMeans<-matrix(data=NA, nrow = 196, ncol = 21)
 z<-lapply(1:21, matrix, data=NA, nrow = 196, ncol =2)
