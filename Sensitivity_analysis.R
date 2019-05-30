@@ -14,7 +14,7 @@ modelRun<-function(params){
 }
 
 #set parameters
-q.arg<- list(list("min"=1, "max"=10), list("min"=1, "max"=15))
+q.arg<- list(list("min"=1, "max"=14), list("min"=1, "max"=14))
 names(q.arg)<-c("s", "m")
 factors<-c("s", "m")
 
@@ -32,11 +32,11 @@ outB<-modelRun(bothLHS$data)
 #plotprcc(bothLHS, stack=TRUE)
 
 #set only S to change
-q.argS<- list(list("min"=1, "max"=10), list("min"=6, "max"=8))
+q.argS<- list(list("min"=1, "max"=14), list("min"=6, "max"=8))
 sLHS<-LHS(model = NULL, factors, N=n, q='qdunif', q.argS, nboot=1)
 out_S<-modelRun(sLHS$data)
 #set only M to change
-q.argM<- list(list("min"=2, "max"=6), list("min"=1, "max"=15))
+q.argM<- list(list("min"=6, "max"=8), list("min"=1, "max"=14))
 mLHS<-LHS(model = NULL, factors, N=n, q='qdunif', q.argM, nboot=4)
 out_M<-modelRun(mLHS$data)
 
@@ -67,20 +67,22 @@ mOut<-cleanData(out_M)
 
 
 pal <- colorRampPalette(c("yellow", "green", "blue"))
-
+cols<-pal(21)
 
 StorSensPlot<-function(LHS, vals, wy, sm, dataOut){
   paramVal<-data.matrix(LHS$data[sm])
   colRamp<-pal(vals)[as.numeric(cut(paramVal,breaks = vals))]
   plt<-matplot(dataOut$stor[[wy]], type='l', col = colRamp)+
-    ColorLegend(x='topleft', cols = pal(vals), labels=1:vals, cntrlbl=TRUE)
+    ColorLegend(x='topleft', cols = pal(vals), labels=1:vals, cntrlbl=TRUE)+
+    lines(dataOut$maxS[[wy]][,1], type='l') #max storage
   return(plt) ### color coded to m/s values
 }
 
 QSensPlot<-function(LHS, vals, wy, sm, dataOut){
   paramVal<-data.matrix(LHS$data[sm])
   colRamp<-pal(vals)[as.numeric(cut(paramVal,breaks = vals))]
-  plt<- matplot(dataOut$Q[[wy]], type='l', col = colRamp) 
+  plt<- matplot(dataOut$Q[[wy]], type='l', col = colRamp)+
+    lines(qlim[,2], type='l', lty=3, col='grey17')
   return(plt) ### color coded to m/s values
 }
 
@@ -91,13 +93,60 @@ StorSensPlot(bothLHS, 10, wy, 's', both)
 QSensPlot(bothLHS, 15, wy, 'm', both)
 QSensPlot(bothLHS, 10, wy, 's', both)
 
-
 par(mfrow=c(2,2))
 
 StorSensPlot(mLHS, 15, 10, 'm', mOut)
 StorSensPlot(sLHS, 10, 10, 's', sOut)
 QSensPlot(mLHS, 15, 10, 'm', mOut)
 QSensPlot(sLHS, 10, 10, 's', sOut)
+
+
+#------------------------------------------------------------------------------------------------
+# calculate days over the discharge limits, and total volume over discharge limits as a function of s/m
+#------------------------------------------------------------------------------------------------
+yrs<- 1998:2018
+inflSum<-matrix(data=NA, nrow = jul, ncol = 21)
+for (wy in 1:21){
+  inflSum[,wy]<-cumsum(FC$Q[FC$WY == yrs[wy]])
+}
+totQ<-inflSum[jul,]
+
+colRamp<-pal(21)[as.numeric(cut(totQ,breaks = 21))]
+
+
+overage<-function(LHSout){
+  days_over<-matrix(data=NA, nrow = n, ncol = 21)
+  vol_over<-matrix(data=NA, nrow = n, ncol = 21)
+  for (i in 1:n){
+    for (wy in 1:21){
+      wy_dat= LHSout$Q[[wy]][,i]
+      ids<-which(wy_dat > 10000)
+      days_over[i, wy] = length(ids)
+      vol_over[i, wy] =sum(wy_dat[ids]-10000)
+    }
+  }
+  out<-list(days_over, vol_over)
+  names(out)<-c("days_over", 'vol_over')
+  return(out)
+}
+
+
+
+plt_overage<-function(LHSout, params){
+  Qover<-overage(LHSout)
+  a<-Qover$days_over
+  y<-as.data.frame(a[,1])
+  x<-bothLHS$data['m']
+  plt<- plot(x[,],y[,], ylab="Days Over Discharge Limit", xlab="Discharge Planning Days", ylim=c(0.5, 35), pch=19, col=cols[1])
+    for (i in 2:21){
+     y<-as.data.frame(a[,i])
+     x<-bothLHS$data['m']
+     points(x[,],y[,], pch=19, col=colRamp) #color ramp isnt quite right
+    } 
+  return(plt)
+}
+
+plt_overage(both, bothLHS$data)
 
 #------------------------------------------------------------------------------------------------
 # Mean discharge for each day of each water year under all model runs and confidence intervals
@@ -126,52 +175,6 @@ plot(sd_all, type='l')
 lines(1:4116, sd_S, type='l', col='green')
 lines(1:4116, sd_M, type='l', col='blue')
 
-#------------------------------------------------------------------------------------------------
-# calculate days over the discharge limits, and total volume over discharge limits as a function of s/m
-#------------------------------------------------------------------------------------------------
-days_over<-matrix(data=NA, nrow = 21, ncol = n)
-vol_over<-matrix(data=NA, nrow = 21, ncol = n)
-for (i in 1:n){
-  for (wy in 1:21){
-    wy_out= outB[wy,i]
-    ids<-which(wy_out > 10000)
-    days_over[wy, i] = length(ids)
-    vol_over[wy, i] =sum(wy_out[ids] -10000)
-  }
-}
-
-plot(bothparams$m, vol_over[1,])
-plot(bothparams$s, vol_over[1,])
-
-###s
-days_over_S<-matrix(data=NA, nrow = 21, ncol = 50)
-vol_over_S<-matrix(data=NA, nrow = 21, ncol = 50)
-for (i in 1: 50){
-  for (wy in 1:21){
-    wy_out= out_S[FC$WY == yrs[wy],i]
-    ids<-which(wy_out > 10000)
-    days_over_S[wy, i] = length(ids)
-    vol_over_S[wy, i] =sum(wy_out[ids] -10000)
-  }
-}
-
-plot(Sparams$m, vol_over_S[1,])
-plot(Sparams$s, vol_over_S[1,])
-
-###M
-days_over_M<-matrix(data=NA, nrow = 21, ncol = 100)
-vol_over_M<-matrix(data=NA, nrow = 21, ncol = 100)
-for (i in 1: 100){
-  for (wy in 1:21){
-    wy_out= out_M[FC$WY == yrs[wy],i]
-    ids<-which(wy_out > 10000)
-    days_over_M[wy, i] = length(ids)
-    vol_over_M[wy, i] =sum(wy_out[ids] -10000)
-  }
-}
-
-plot(Mparams$m, vol_over_M[1,])
-plot(Mparams$s, vol_over_M[1,])
 
 par(mfrow=c(3,1)) 
 
@@ -197,8 +200,6 @@ OutSum<-matrix(data=NA, nrow = jul, ncol = 100)
 obsSum<-matrix(data=NA, nrow = jul, ncol = 21)
 
 for (wy in 1:21){
-  obsSum[,wy]<-cumsum(FC$Qo[FC$WY == wy])
-  
   q=out[FC$WY == wy]
   for (i in 1:100){
     OutSum[,i]<-cumsum(q[,i])
