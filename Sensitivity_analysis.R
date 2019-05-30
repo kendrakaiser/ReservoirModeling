@@ -68,17 +68,29 @@ mOut<-cleanData(out_M)
 
 pal <- colorRampPalette(c("yellow", "green", "blue"))
 
+
 StorSensPlot<-function(LHS, vals, wy, sm, dataOut){
   paramVal<-data.matrix(LHS$data[sm])
   colRamp<-pal(vals)[as.numeric(cut(paramVal,breaks = vals))]
-  return(matplot(dataOut$stor[[wy]], type='l', col = colRamp)) ### color coded to m/s values
+  plt<-matplot(dataOut$stor[[wy]], type='l', col = colRamp)+
+    ColorLegend(x='topleft', cols = pal(vals), labels=1:vals, cntrlbl=TRUE)
+  return(plt) ### color coded to m/s values
 }
 
 QSensPlot<-function(LHS, vals, wy, sm, dataOut){
   paramVal<-data.matrix(LHS$data[sm])
   colRamp<-pal(vals)[as.numeric(cut(paramVal,breaks = vals))]
-  return(matplot(dataOut$Q[[wy]], type='l', col = colRamp)) ### color coded to m/s values
+  plt<- matplot(dataOut$Q[[wy]], type='l', col = colRamp) 
+  return(plt) ### color coded to m/s values
 }
+
+par(mfrow=c(2,2))
+wy=17
+StorSensPlot(bothLHS, 15, wy, 'm', both)
+StorSensPlot(bothLHS, 10, wy, 's', both)
+QSensPlot(bothLHS, 15, wy, 'm', both)
+QSensPlot(bothLHS, 10, wy, 's', both)
+
 
 par(mfrow=c(2,2))
 
@@ -86,8 +98,6 @@ StorSensPlot(mLHS, 15, 10, 'm', mOut)
 StorSensPlot(sLHS, 10, 10, 's', sOut)
 QSensPlot(mLHS, 15, 10, 'm', mOut)
 QSensPlot(sLHS, 10, 10, 's', sOut)
-
-
 
 #------------------------------------------------------------------------------------------------
 # Mean discharge for each day of each water year under all model runs and confidence intervals
