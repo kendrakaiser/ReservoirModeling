@@ -4,6 +4,7 @@
 ### Need to figure out how to run the model and save all output so we can do sensitivity analysis on storage:maxStorage and discharge
 
 library(pse)
+library(DescTools)
 
 #define probability function - discrete uniform density function for integer parameters
 qdunif<-function(p, min, max){
@@ -65,6 +66,7 @@ both<-cleanData(outB)
 sOut<-cleanData(out_S)
 mOut<-cleanData(out_M)
 
+#plot all outputs from the model runs
 
 pal <- colorRampPalette(c("yellow", "green", "blue"))
 cols<-pal(21)
@@ -81,26 +83,47 @@ StorSensPlot<-function(LHS, vals, wy, sm, dataOut){
 QSensPlot<-function(LHS, vals, wy, sm, dataOut){
   paramVal<-data.matrix(LHS$data[sm])
   colRamp<-pal(vals)[as.numeric(cut(paramVal,breaks = vals))]
-  plt<- matplot(dataOut$Q[[wy]], type='l', col = colRamp)+
-    lines(qlim[,2], type='l', lty=3, col='grey17')
+  plt<- matplot(dataOut$Q[[wy]], type='l', col = colRamp) +
+        lines(qlim[,2], type='l', lty=3, col='grey17')
   return(plt) ### color coded to m/s values
 }
 
 par(mfrow=c(2,2))
-wy=17
-StorSensPlot(bothLHS, 15, wy, 'm', both)
-StorSensPlot(bothLHS, 10, wy, 's', both)
-QSensPlot(bothLHS, 15, wy, 'm', both)
-QSensPlot(bothLHS, 10, wy, 's', both)
+wy=10
+StorSensPlot(bothLHS, 14, wy, 'm', both)
+StorSensPlot(bothLHS, 14, wy, 's', both)
+QSensPlot(bothLHS, 14, wy, 'm', both)
+QSensPlot(bothLHS, 14, wy, 's', both)
+mtext("Model with both variables changing", outer = TRUE, cex = 1.5)
 
 par(mfrow=c(2,2))
 
-StorSensPlot(mLHS, 15, 10, 'm', mOut)
-StorSensPlot(sLHS, 10, 10, 's', sOut)
-QSensPlot(mLHS, 15, 10, 'm', mOut)
-QSensPlot(sLHS, 10, 10, 's', sOut)
+StorSensPlot(mLHS, 14, wy, 'm', mOut)
+StorSensPlot(mLHS, 2, wy, 's', sOut)
+QSensPlot(mLHS, 14, wy, 'm', mOut)
+QSensPlot(mLHS, 2, wy, 's', sOut)+
 
 
+par(mfrow=c(2,2))
+StorSensPlot(sLHS, 2, wy, 'm', mOut)
+StorSensPlot(sLHS, 14, wy, 's', sOut)
+QSensPlot(sLHS, 2, wy, 'm', mOut)
+QSensPlot(sLHS, 14, wy, 's', sOut)
+mtext("Model Variability of S", outer = TRUE, cex = 1.5)
+
+par(mfrow=c(4,1))
+StorSensPlot(bothLHS, 14, wy, 'm', both)
+StorSensPlot(bothLHS, 14, wy, 's', both)
+StorSensPlot(mLHS, 14, wy, 'm', mOut)
+StorSensPlot(sLHS, 14, wy, 's', sOut)
+
+for (wy in 1:21){
+  par(mfrow=c(4,1))
+  StorSensPlot(bothLHS, 14, wy, 'm', both)
+  StorSensPlot(bothLHS, 14, wy, 's', both)
+  StorSensPlot(mLHS, 14, wy, 'm', mOut)
+  StorSensPlot(sLHS, 14, wy, 's', sOut)
+}
 #------------------------------------------------------------------------------------------------
 # calculate days over the discharge limits, and total volume over discharge limits as a function of s/m
 #------------------------------------------------------------------------------------------------
@@ -130,71 +153,81 @@ overage<-function(LHSout){
   return(out)
 }
 
+cols<-par(21)
 
-
-plt_overage<-function(LHSout, params){
+plt_overage<-function(LHSout, params, sm){
   Qover<-overage(LHSout)
   a<-Qover$days_over
   y<-as.data.frame(a[,1])
-  x<-bothLHS$data['m']
+  x<-bothLHS$data[sm]
   plt<- plot(x[,],y[,], ylab="Days Over Discharge Limit", xlab="Discharge Planning Days", ylim=c(0.5, 35), pch=19, col=cols[1])
     for (i in 2:21){
      y<-as.data.frame(a[,i])
-     x<-bothLHS$data['m']
-     points(x[,],y[,], pch=19, col=colRamp) #color ramp isnt quite right
+     x<-bothLHS$data[sm]
+     points(x[,],y[,], pch=19, col=cols[i]) #color ramp isnt quite right
     } 
   return(plt)
 }
 
-plt_overage(both, bothLHS$data)
+plt_overage(mOut, mLHS$data, 'm')
 
 #------------------------------------------------------------------------------------------------
-# Mean discharge for each day of each water year under all model runs and confidence intervals
+# Mean discharge for each day of each water year under all model runs with confidence intervals and standard deviations
 #------------------------------------------------------------------------------------------------
+# need to group water years by flow - either cluster analysis to group, of high/low/average
 
-OutMeans<-matrix(data=NA, nrow = 196, ncol = 21)
-z<-lapply(1:21, matrix, data=NA, nrow = 196, ncol =2)
-sd_doy<-matrix(data=NA, nrow = 196, ncol = 21)
-for (i in 1:21){
-  OutMeans[,i]<-rowMeans(wy_Q[[i]], na.rm = FALSE, dims = 1)
-  z[[i]]<-apply(wy_Q[[i]], 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
-  sd_doy[,i]<- apply(wy_Q[[i]], 1, sd)
+Qstats<-function(dataOut){
+  
+  OutMeans<-matrix(data=NA, nrow = 196, ncol = 21)
+  z<-lapply(1:21, matrix, data=NA, nrow = 196, ncol =2)
+  sd_doy<-matrix(data=NA, nrow = 196, ncol = 21)
+  for (i in 1:21){
+    wy_Q<-dataOut$Q[[i]]
+    OutMeans[,i]<-rowMeans(wy_Q, na.rm = FALSE, dims = 1)
+    z[[i]]<-apply(wy_Q, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
+    sd_doy[,i]<- apply(wy_Q, 1, sd)
+  }
+  out<-list(OutMeans, z, sd_doy)
+  names(out)<-c('mean', 'ci', 'sd')
+  return(out)
+}
+storstats<-function(dataOut){
+  
+  OutMeans<-matrix(data=NA, nrow = 196, ncol = 21)
+  z<-lapply(1:21, matrix, data=NA, nrow = 196, ncol =2)
+  sd_doy<-matrix(data=NA, nrow = 196, ncol = 21)
+  for (i in 1:21){
+    wy_Q<-dataOut$stor[[i]]
+    OutMeans[,i]<-rowMeans(wy_Q, na.rm = FALSE, dims = 1)
+    z[[i]]<-apply(wy_Q, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
+    sd_doy[,i]<- apply(wy_Q, 1, sd)
+  }
+  out<-list(OutMeans, z, sd_doy)
+  names(out)<-c('mean', 'ci', 'sd')
+  return(out)
 }
 
-matplot(OutMeans, type='l')
+bothQstats<-Qstats(both)
+sQstats<-Qstats(sOut)
+mQstats<-Qstats(mOut)
 
-#same for indiivdual variables
-OutMeans[,2]<-rowMeans(out_S, na.rm = FALSE, dims = 1)
-OutMeans[,3]<-rowMeans(out_M, na.rm = FALSE, dims = 1)
-zS<-apply(out_S, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
-zM<-apply(out_M, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
-sd_S<- apply(out_S, 1, sd)
-sd_M<- apply(out_M, 1, sd)
-
-plot(sd_all, type='l')
-lines(1:4116, sd_S, type='l', col='green')
-lines(1:4116, sd_M, type='l', col='blue')
+bothSstats<-storstats(both)
+sSstats<-storstats(sOut)
+mSstats<-storstats(mOut)
 
 
-par(mfrow=c(3,1)) 
+matplot(bothSstats$sd, type='l', ylim=c(0,84000))
+matplot(mSstats$sd, type='l', ylim=c(0,84000))
+matplot(sSstats$sd, type='l', ylim=c(0,84000))
 
-plot(OutMeans[,1], type='l', lwd='2')
-lines(1:4116, z[2,], type='l', col='blue')
-lines(1:4116, z[1,], type='l', col='blue' )
+matplot(bothQstats$sd, type='l')
+matplot(mQstats$sd, type='l')
+matplot(sQstats$sd, type='l')
 
-plot(OutMeans[,2], type='l', lwd='2')
-lines(1:4116, zS[2,], type='l', col='blue')
-lines(1:4116, zS[1,], type='l', col='blue')
 
-plot(OutMeans[,3], type='l', lwd='2')
-lines(1:4116, zM[2,], type='l', col='blue')
-lines(1:4116, zM[1,], type='l', col='blue')
-
-par(mfrow=c(1,1)) 
-plot(OutMeans[,1], type='l', lwd='2')
-lines(1:4116, OutMeans[,2], type='l', lwd='1', col='blue')
-lines(1:4116, OutMeans[,3], type='l', lwd='1', col='green')
-lines(1:4116, rep(10000, 4116), lty=3, col="grey")
+#------------------------------------------------------------------------------------------------
+# cumulative sum of discahrge - need to update
+#------------------------------------------------------------------------------------------------
 
 OutSum<-matrix(data=NA, nrow = jul, ncol = 100)
 obsSum<-matrix(data=NA, nrow = jul, ncol = 21)
@@ -213,7 +246,7 @@ for (wy in 1:21){
 
 
 
-#cumulative sum of discahrge
+
 
 matplot(OutSum, type='l', col='blue')
 lines(FC$doy[1:jul], obsSum, type='l', col='black', lwd='2')
