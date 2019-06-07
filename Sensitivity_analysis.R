@@ -44,6 +44,12 @@ q.argM<- list(list("min"=13, "max"=15), list("min"=1, "max"=maxDays))
 mLHS<-LHS(model = NULL, factors, N=n, q='qdunif', q.argM, nboot=4)
 out_M<-modelRun(mLHS$data)
 
+#set only M to change with a lower S
+q.argM<- list(list("min"=6, "max"=8), list("min"=1, "max"=maxDays))
+mLHS_low<-LHS(model = NULL, factors, N=n, q='qdunif', q.argM, nboot=4)
+out_M_lowS<-modelRun(mLHS_low$data)
+
+
 #------------------------------------------------------------------------------------------------
 # Re-organize output for analysis - all runs for each wy in one matrix
 #------------------------------------------------------------------------------------------------
@@ -70,25 +76,17 @@ cleanData<-function(LHSrun){
 both<-cleanData(outB)
 sOut<-cleanData(out_S)
 mOut<-cleanData(out_M)
+mOut_sl<-cleanData(out_M_lowS)
 
 #plot all outputs from the model runs
 
 pal <- colorRampPalette(c("yellow", "green", "blue"))
 cols<-pal(21)
 
-vals=maxDays
-wy=21
-sm='m'
-dataOut = mOut
-
-matplot(dataOut$stor[[wy]], type='l', col = colRamp)+
-  ColorLegend(x='topleft', cols = pal(vals), labels=1:vals, cntrlbl=TRUE) 
-
-
 StorSensPlot<-function(LHS, vals, wy, sm, dataOut){
   paramVal<-data.matrix(LHS$data[sm])
   colRamp<-pal(vals)[as.numeric(cut(paramVal,breaks = vals))]
-  plt<-matplot(dataOut$stor[[wy]], type='l', col = colRamp, ylim=c(390000, 1100000))+
+  plt<-matplot(dataOut$stor[[wy]], type='l', col = colRamp, ylim=c(300000, 1100000))+
     ColorLegend(x='topleft', cols = pal(vals), labels=1:vals, cntrlbl=TRUE) +
     lines(dataOut$maxStor[,wy], type='l') #max storage
   return(plt) ### color coded to m/s values
@@ -110,24 +108,31 @@ QSensPlot(bothLHS, maxDays, wy, 'm', both)
 QSensPlot(bothLHS, maxDays, wy, 's', both)
 mtext("Model with both variables changing", outer = TRUE, cex = 1.5)
 
-par(mfrow=c(2,2)) #**
-
-StorSensPlot(mLHS, maxDays, wy, 'm', mOut)
-StorSensPlot(sLHS, maxDays, wy, 's', sOut)
-QSensPlot(mLHS, maxDays, wy, 'm', mOut)
-QSensPlot(sLHS, maxDays, wy, 's', sOut)
-
-
-
 par(mfrow=c(4,1))
 StorSensPlot(bothLHS, maxDays, wy, 'm', both)
 StorSensPlot(bothLHS, maxDays, wy, 's', both)
 StorSensPlot(mLHS, maxDays, wy, 'm', mOut)
 StorSensPlot(sLHS, maxDays, wy, 's', sOut)
 
-hml<-c(2,3,4,20,21)
 
-par(mfcol=c(2,5))
+par(mfrow=c(2,2)) #show difference in sensitivity between m and s
+
+StorSensPlot(mLHS, maxDays, wy, 'm', mOut)
+StorSensPlot(sLHS, maxDays, wy, 's', sOut)
+QSensPlot(mLHS, maxDays, wy, 'm', mOut)
+QSensPlot(sLHS, maxDays, wy, 's', sOut)
+
+wy=10
+par(mfrow=c(2,2)) #show difference in sensitivity between m when s is set at 7 or 14
+
+StorSensPlot(mLHS, maxDays, wy, 'm', mOut) #s=14
+StorSensPlot(mLHS_low, maxDays, wy, 'm', mOut_sl) #s=7
+QSensPlot(mLHS, maxDays, wy, 'm', mOut)
+QSensPlot(mLHS_low, maxDays, wy, 'm', mOut_sl)
+
+hml<-c(4,3,20)
+
+par(mfcol=c(2,3))
 for (wy in hml){
   StorSensPlot(bothLHS, maxDays, wy, 'm', both)
   QSensPlot(bothLHS, maxDays, wy, 'm', both)
