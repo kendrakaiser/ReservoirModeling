@@ -12,6 +12,7 @@ x2<- rep(datelab, times=4)
 qs<-rep(c("Inflow", "Limit","Modeled Q", "Observed Q"), each=196)
 gnames<- c("g98", "g99", "g00", 'g01', "g02", "g03", "g04","g05", 'g06', "g07", "g08", "g09", "g10", "g11", "g12", "g13", "g14", "g15", "g16", "g17")
 
+#add variable that is == results 
 plotfn<- function(wy){
   vol<-(c(FC$stor[FC$WY == yrs[wy]],FC$AF[FC$WY == yrs[wy]],FC$maxS[FC$WY == yrs[wy]]))/10000
   df <- data.frame(fill,x,vol)
