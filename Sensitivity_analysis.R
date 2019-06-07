@@ -36,11 +36,11 @@ outB<-modelRun(bothLHS$data)
 #plotprcc(bothLHS, stack=TRUE)
 
 #set only S to change
-q.argS<- list(list("min"=1, "max"=maxDays), list("min"=6, "max"=8))
+q.argS<- list(list("min"=1, "max"=maxDays), list("min"=13, "max"=15))
 sLHS<-LHS(model = NULL, factors, N=n, q='qdunif', q.argS, nboot=1)
 out_S<-modelRun(sLHS$data)
 #set only M to change
-q.argM<- list(list("min"=6, "max"=8), list("min"=1, "max"=maxDays))
+q.argM<- list(list("min"=13, "max"=15), list("min"=1, "max"=maxDays))
 mLHS<-LHS(model = NULL, factors, N=n, q='qdunif', q.argM, nboot=4)
 out_M<-modelRun(mLHS$data)
 
@@ -50,6 +50,7 @@ out_M<-modelRun(mLHS$data)
 cleanData<-function(LHSrun){
   wy_Q<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
   wy_stor<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
+  maxStor<-matrix(data= NA, nrow=196, ncol=21)
   reps = seq(1, length(LHSrun), 21)
 
   count=0
@@ -59,9 +60,10 @@ cleanData<-function(LHSrun){
       wy_stor[[i]][,j]<- LHSrun[[reps[j]+count]][,3]
     }
     count=count+1
+    maxStor[,i]<- LHSrun[[i]][,1]
   }
-  out<-list(wy_Q, wy_stor)
-  names(out)<-(c("Q", "stor"))
+  out<-list(wy_Q, wy_stor, maxStor)
+  names(out)<-(c("Q", "stor", "maxStor"))
   return(out)
 }
 
@@ -74,12 +76,21 @@ mOut<-cleanData(out_M)
 pal <- colorRampPalette(c("yellow", "green", "blue"))
 cols<-pal(21)
 
+vals=maxDays
+wy=21
+sm='m'
+dataOut = mOut
+
+matplot(dataOut$stor[[wy]], type='l', col = colRamp)+
+  ColorLegend(x='topleft', cols = pal(vals), labels=1:vals, cntrlbl=TRUE) 
+
+
 StorSensPlot<-function(LHS, vals, wy, sm, dataOut){
   paramVal<-data.matrix(LHS$data[sm])
   colRamp<-pal(vals)[as.numeric(cut(paramVal,breaks = vals))]
-  plt<-matplot(dataOut$stor[[wy]], type='l', col = colRamp)+
-    ColorLegend(x='topleft', cols = pal(vals), labels=1:vals, cntrlbl=TRUE)+
-    lines(dataOut$maxS[[wy]][,1], type='l') #max storage
+  plt<-matplot(dataOut$stor[[wy]], type='l', col = colRamp, ylim=c(390000, 1100000))+
+    ColorLegend(x='topleft', cols = pal(vals), labels=1:vals, cntrlbl=TRUE) +
+    lines(dataOut$maxStor[,wy], type='l') #max storage
   return(plt) ### color coded to m/s values
 }
 
@@ -93,39 +104,33 @@ QSensPlot<-function(LHS, vals, wy, sm, dataOut){
 
 par(mfrow=c(2,2))
 wy=10
-StorSensPlot(bothLHS, 14, wy, 'm', both)
-StorSensPlot(bothLHS, 14, wy, 's', both)
-QSensPlot(bothLHS, 14, wy, 'm', both)
-QSensPlot(bothLHS, 14, wy, 's', both)
+StorSensPlot(bothLHS, maxDays, wy, 'm', both)
+StorSensPlot(bothLHS, maxDays, wy, 's', both)
+QSensPlot(bothLHS, maxDays, wy, 'm', both)
+QSensPlot(bothLHS, maxDays, wy, 's', both)
 mtext("Model with both variables changing", outer = TRUE, cex = 1.5)
 
-par(mfrow=c(2,2))
+par(mfrow=c(2,2)) #**
 
-StorSensPlot(mLHS, 14, wy, 'm', mOut)
-StorSensPlot(mLHS, 2, wy, 's', sOut)
-QSensPlot(mLHS, 14, wy, 'm', mOut)
-QSensPlot(mLHS, 2, wy, 's', sOut)+
+StorSensPlot(mLHS, maxDays, wy, 'm', mOut)
+StorSensPlot(sLHS, maxDays, wy, 's', sOut)
+QSensPlot(mLHS, maxDays, wy, 'm', mOut)
+QSensPlot(sLHS, maxDays, wy, 's', sOut)
 
 
-par(mfrow=c(2,2))
-StorSensPlot(sLHS, 2, wy, 'm', mOut)
-StorSensPlot(sLHS, 14, wy, 's', sOut)
-QSensPlot(sLHS, 2, wy, 'm', mOut)
-QSensPlot(sLHS, 14, wy, 's', sOut)
-mtext("Model Variability of S", outer = TRUE, cex = 1.5)
 
 par(mfrow=c(4,1))
-StorSensPlot(bothLHS, 14, wy, 'm', both)
-StorSensPlot(bothLHS, 14, wy, 's', both)
-StorSensPlot(mLHS, 14, wy, 'm', mOut)
-StorSensPlot(sLHS, 14, wy, 's', sOut)
+StorSensPlot(bothLHS, maxDays, wy, 'm', both)
+StorSensPlot(bothLHS, maxDays, wy, 's', both)
+StorSensPlot(mLHS, maxDays, wy, 'm', mOut)
+StorSensPlot(sLHS, maxDays, wy, 's', sOut)
 
-for (wy in 1:21){
-  par(mfrow=c(4,1))
-  StorSensPlot(bothLHS, 14, wy, 'm', both)
-  StorSensPlot(bothLHS, 14, wy, 's', both)
-  StorSensPlot(mLHS, 14, wy, 'm', mOut)
-  StorSensPlot(sLHS, 14, wy, 's', sOut)
+hml<-c(2,3,4,20,21)
+
+par(mfcol=c(2,5))
+for (wy in hml){
+  StorSensPlot(bothLHS, maxDays, wy, 'm', both)
+  QSensPlot(bothLHS, maxDays, wy, 'm', both)
 }
 #------------------------------------------------------------------------------------------------
 # calculate days over the discharge limits, and total volume over discharge limits as a function of s/m
@@ -184,6 +189,7 @@ Qstats<-function(dataOut){
   OutMeans<-matrix(data=NA, nrow = 196, ncol = 21)
   z<-lapply(1:21, matrix, data=NA, nrow = 196, ncol =2)
   sd_doy<-matrix(data=NA, nrow = 196, ncol = 21)
+  cv_doy<-matrix(data=NA, nrow = 196, ncol = 21)
   for (i in 1:21){
     wy_Q<-dataOut$Q[[i]]
     OutMeans[,i]<-rowMeans(wy_Q, na.rm = FALSE, dims = 1)
@@ -200,6 +206,7 @@ storstats<-function(dataOut){
   OutMeans<-matrix(data=NA, nrow = 196, ncol = 21)
   z<-lapply(1:21, matrix, data=NA, nrow = 196, ncol =2)
   sd_doy<-matrix(data=NA, nrow = 196, ncol = 21)
+  cv_doy<-matrix(data=NA, nrow = 196, ncol = 21)
   for (i in 1:21){
     wy_S<-dataOut$stor[[i]]
     OutMeans[,i]<-rowMeans(wy_S, na.rm = FALSE, dims = 1)
@@ -225,13 +232,28 @@ matplot(bothSstats$sd, type='l', ylim=c(0,84000))
 matplot(mSstats$sd, type='l', ylim=c(0,84000))
 matplot(sSstats$sd, type='l', ylim=c(0,84000))
 
-matplot(bothQstats$sd, type='l')
-matplot(mQstats$sd, type='l')
-matplot(sQstats$sd, type='l')
+high=c(1,2,9,14,15,21)
+low=c(4,8)
+av=c(3,5,6,7,10,11,12,13,16,17,18,19,20)
 
+#cumulative inflow to system
+Qsum<-matrix(data=NA, nrow=21, ncol=1)
+for (wy in 1:21){
+  csum<-cumsum(FC$Q[FC$WY == yrs[wy]])
+  Qsum[wy]<-csum[196]
+}
+
+#color ramp of cumulative inflow
+paramVal<-data.matrix(Qsum)
+colRamp<-pal(21)[as.numeric(cut(paramVal,breaks = 21))]
+
+par(mfcol=c(3,1))
+matplot(bothQstats$cv[,high], type='l', col = colRamp)
+matplot(bothQstats$cv[,av], type='l', col = colRamp)
+matplot(bothQstats$cv[,low], type='l', col = colRamp)
 
 #------------------------------------------------------------------------------------------------
-# cumulative sum of discahrge - need to update
+# cumulative sum of discharge - need to update
 #------------------------------------------------------------------------------------------------
 
 OutSum<-matrix(data=NA, nrow = jul, ncol = 100)
