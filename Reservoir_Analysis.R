@@ -1,7 +1,7 @@
 #Initial analysis of reservoir model output and manager operations
 
-m=10
-s=5
+m=14
+s=14
 
 results<- outflowStor(s,m)
 
@@ -17,7 +17,10 @@ for (wy in 1:2){
   lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
 }
 
+#running standard deviation of managers outflow
+library(caTools)
 
+runQsd<-runsd(x, k)
 #make a few plots - e.g number, timing and volume that the managers exceeded the maxS for the day - and other plots from the nicholas data site
 #determine average day they start drafting for irrigation - e.g. once dsdt is negative and never goes positive again
 #--------------
