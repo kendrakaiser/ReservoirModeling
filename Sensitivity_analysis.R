@@ -14,8 +14,11 @@ modelRun<-function(params){
   return(mapply(outflowStor, params[,1], params[,2]))
 }
 
+
+maxDays=28
+
 #set parameters
-q.arg<- list(list("min"=1, "max"=14), list("min"=1, "max"=14))
+q.arg<- list(list("min"=1, "max"=maxDays), list("min"=1, "max"=maxDays))
 names(q.arg)<-c("s", "m")
 factors<-c("s", "m")
 
@@ -33,11 +36,11 @@ outB<-modelRun(bothLHS$data)
 #plotprcc(bothLHS, stack=TRUE)
 
 #set only S to change
-q.argS<- list(list("min"=1, "max"=14), list("min"=6, "max"=8))
+q.argS<- list(list("min"=1, "max"=maxDays), list("min"=6, "max"=8))
 sLHS<-LHS(model = NULL, factors, N=n, q='qdunif', q.argS, nboot=1)
 out_S<-modelRun(sLHS$data)
 #set only M to change
-q.argM<- list(list("min"=6, "max"=8), list("min"=1, "max"=14))
+q.argM<- list(list("min"=6, "max"=8), list("min"=1, "max"=maxDays))
 mLHS<-LHS(model = NULL, factors, N=n, q='qdunif', q.argM, nboot=4)
 out_M<-modelRun(mLHS$data)
 
@@ -186,9 +189,10 @@ Qstats<-function(dataOut){
     OutMeans[,i]<-rowMeans(wy_Q, na.rm = FALSE, dims = 1)
     z[[i]]<-apply(wy_Q, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
     sd_doy[,i]<- apply(wy_Q, 1, sd)
+    cv_doy[,i]<- apply(wy_Q, 1, cv)
   }
-  out<-list(OutMeans, z, sd_doy)
-  names(out)<-c('mean', 'ci', 'sd')
+  out<-list(OutMeans, z, sd_doy, cv_doy)
+  names(out)<-c('mean', 'ci', 'sd', 'cv')
   return(out)
 }
 storstats<-function(dataOut){
@@ -197,13 +201,14 @@ storstats<-function(dataOut){
   z<-lapply(1:21, matrix, data=NA, nrow = 196, ncol =2)
   sd_doy<-matrix(data=NA, nrow = 196, ncol = 21)
   for (i in 1:21){
-    wy_Q<-dataOut$stor[[i]]
-    OutMeans[,i]<-rowMeans(wy_Q, na.rm = FALSE, dims = 1)
-    z[[i]]<-apply(wy_Q, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
-    sd_doy[,i]<- apply(wy_Q, 1, sd)
+    wy_S<-dataOut$stor[[i]]
+    OutMeans[,i]<-rowMeans(wy_S, na.rm = FALSE, dims = 1)
+    z[[i]]<-apply(wy_S, 1, quantile, probs = c(0.05, 0.95),  na.rm = TRUE)
+    sd_doy[,i]<- apply(wy_S, 1, sd)
+    cv_doy[,i]<- apply(wy_S, 1, cv)
   }
-  out<-list(OutMeans, z, sd_doy)
-  names(out)<-c('mean', 'ci', 'sd')
+  out<-list(OutMeans, z, sd_doy, cv_doy)
+  names(out)<-c('mean', 'ci', 'sd', 'cv')
   return(out)
 }
 
