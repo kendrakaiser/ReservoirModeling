@@ -20,7 +20,7 @@ maxDays=28
 
 
 #myLHS<-LHS(model=modelRun, factors, N=100, q='qdunif', q.arg, nboot=4)
-n=100
+n=500
 #create hypercubes with different parameter sets
 bothLHS <-LHS(model = NULL, factors, N=n, q='qdunif', q.arg, nboot=1)
 outB<-modelRun(bothLHS$data)
@@ -167,6 +167,17 @@ overageDat<-function(LHSout, LHSmod){
   x<<-as.matrix(LHSmod$data['m'])
 }
 
+daysOverMin<-matrix(data=NA, nrow=21, ncol=3)
+daysOverMin[,1]<-apply(a, 2, FUN=min)
+daysOverMin[,2]<-apply(a, 2, FUN=max)
+daysOverMin[,3]<-apply(a, 2, FUN=mean)
+
+volOverMin<-matrix(data=NA, nrow=21, ncol=3)
+volOverMin[,1]<-apply(v, 2, FUN=min)
+volOverMin[,2]<-apply(v, 2, FUN=max)
+volOverMin[,3]<-apply(v, 2, FUN=mean)
+
+save("both", "bothLHS", "a", "v", "daysOverMin", "volOverMin", "totQ", "inflSum", file="workspace.RData")
 overageDat(both, bothLHS)
 par(mfrow=c(4,4))
 #plot number of days over discharge limits
@@ -176,24 +187,61 @@ for (i in 1:21){
   
   if(maxOver>1){
   colRamp<<-pal(maxOver)[as.numeric(cut(ai, breaks = maxOver))]
-  plot(x, y, ylab="s", xlab="m", ylim=c(0.5, 30), xlim=c(0.5, 30), pch=19, col=colRamp)+
+  plot(x, y, ylab="s", xlab="m", ylim=c(1, 28), xlim=c(1, 28), pch=19, col=colRamp)+
     ColorLegend(x='top', cols = pal(maxD), labels=seq(from=0, to=82, by=10), cntrlbl=TRUE, horiz=TRUE)
   }
 }
   
-par(mfrow=c(4,5))
-#plot number of days over discharge limits
+par(mfrow=c(4,4))
+#plot volumer of water over discharge limits
 for (i in 1:21){
   ai<-v[,i]
   maxOver<-max(ai)
   
   if(maxOver>1){
     colRamp<<-pal(maxOver)[as.numeric(cut(ai, breaks = maxOver))]
-    plot(x, y, ylab="s", xlab="m", ylim=c(0.5, 30), xlim=c(0.5, 30), pch=19, col=colRamp)+
+    plot(x, y, ylab="s", xlab="m", ylim=c(1, 28), xlim=c(1, 28), pch=19, col=colRamp)+
       ColorLegend(x='top', cols = pal(maxD), labels=seq(from=0, to=82, by=10), cntrlbl=TRUE, horiz=TRUE)
   }
 }
 
+
+StorOverage<-function(LHSout){
+  days_over<-matrix(data=NA, nrow = n, ncol = 21)
+  vol_over<-matrix(data=NA, nrow = n, ncol = 21)
+  for (i in 1:n){
+    for (wy in 1:21){
+      wy_dat= LHSout$stor[[wy]][,i]
+      ids<-which(wy_dat > LHSout$maxStor[,wy])
+      days_over[i, wy] = length(ids)
+      vol_over[i, wy] =sum(wy_dat[ids]-LHSout$maxStor[ids,wy])
+    }
+  }
+  out<-list(days_over, vol_over)
+  names(out)<-c("days_over_S", 'vol_over_S')
+  return(out)
+}
+
+storOver<-StorOverage(both)
+
+Sd<-storOver$days_over
+dd<-as.vector(Sd)
+vS<-storOver$vol_over
+vv<-as.vector(vS)
+maxvO<-max(vv)
+
+par(mfrow=c(4,5))
+#plot number of days or volume over storage limits
+for (i in 1:21){
+  ai<-Sd[,i]
+  maxOver<-max(ai)
+  
+  if(maxOver>1){
+    colRamp<<-pal(40)[as.numeric(cut(ai, breaks = 40))]
+    plot(x, y, ylab="s", xlab="m", ylim=c(1, 28), xlim=c(1, 28), pch=19, col=colRamp)+
+      ColorLegend(x='top', cols = pal(maxD), labels=seq(from=0, to=82, by=10), cntrlbl=TRUE, horiz=TRUE)
+  }
+}
 #------------------------------------------------------------------------------------------------
 # Mean discharge for each day of each water year under all model runs with confidence intervals and standard deviations
 #------------------------------------------------------------------------------------------------
