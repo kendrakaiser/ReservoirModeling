@@ -156,15 +156,15 @@ minReleaseApril<-function(day, volF){
 #forecast what the storage would be in s days given previous ∆ in S and make those changes over m days
 forecastS<-function(s,m,day){
   if (day > s+1){
-    dsdt= (stor[day] - stor[day-s])/s
-    storF[day] <<- (dsdt*m)+stor[day] 
+    dsdt= (stor[day] - stor[day-s])/s #calculate daily change in storage over past s days
+    storF[day] <<- (dsdt*m)+stor[day] #forecasted flow for today is the change in storage* m days subtracted form todays storage -- does that make sense??
   } else {storF[day]<<- stor[day]}
 }  
 #evaluate change in storage in regard to the forecasted storage to prevent going over maxS
 #update discharge, change in storage and day+1 storage
 evalS<- function(Qin, day, stor, maxS, Qmin,s,m){
-  if (storF[day] >= maxS[day,m] && day > s+1){ #&& day <188
-    dsdtMax= (storF[day] - maxS[day,m])/s
+  if (storF[day] >= maxS[day,m] && day > s+1){ #&& day <188 #this is max storage m days out
+    dsdtMax= (storF[day] - maxS[day,m])/s #max change in storage is m days out divided by s days?? this doesnt make sense
     qo[day] <- Qmin[day] + (dsdtMax*v2f)
     flag = 'TRUE' #true we need to increase ramp rates to get rid of the water
   } else {qo[day] <- Qmin[day]
