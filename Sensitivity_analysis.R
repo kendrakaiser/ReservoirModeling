@@ -1,7 +1,5 @@
-#s: number of prior days to estimate change in storage
-#m: planning window
-
-### Need to figure out how to run the model and save all output so we can do sensitivity analysis on storage:maxStorage and discharge
+#s: number of days to discharge water over
+#m: number of prior days to estimate change in storage
 
 library(pse)
 library(DescTools)
@@ -14,28 +12,20 @@ modelRun<-function(params){
   return(mapply(outflowStor, params[,1], params[,2]))
 }
 
-
-maxDays=28
-
 #set parameters
 q.arg<- list(list("min"=1, "max"=maxDays), list("min"=1, "max"=maxDays))
 names(q.arg)<-c("s", "m")
 factors<-c("s", "m")
+maxDays=28
 
 
 #myLHS<-LHS(model=modelRun, factors, N=100, q='qdunif', q.arg, nboot=4)
 n=100
-#create hypercube 
+#create hypercubes with different parameter sets
 bothLHS <-LHS(model = NULL, factors, N=n, q='qdunif', q.arg, nboot=1)
-#bothLHS<-tell(bothLHS, bothLHS$data) #res<-get.results(bothLHS)
 outB<-modelRun(bothLHS$data)
 
-#pse plots -- not sure how helpful
-#plotscatter(bothLHS,index.res=c(5, 8, 10),  add.lm=FALSE)#stack=TRUE, index.res=c(250, 255, 260)
-#plotecdf(bothLHS, stack=TRUE)
-#plotprcc(bothLHS, stack=TRUE)
-
-#set only S to change
+#set only S to change - M still veries between 13/14 - can give a single value for the qdunif..
 q.argS<- list(list("min"=1, "max"=maxDays), list("min"=13, "max"=15))
 sLHS<-LHS(model = NULL, factors, N=n, q='qdunif', q.argS, nboot=1)
 out_S<-modelRun(sLHS$data)
@@ -50,9 +40,9 @@ mLHS_low<-LHS(model = NULL, factors, N=n, q='qdunif', q.argM, nboot=4)
 out_M_lowS<-modelRun(mLHS_low$data)
 
 
-#------------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------
 # Re-organize output for analysis - all runs for each wy in one matrix
-#------------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------
 cleanData<-function(LHSrun){
   wy_Q<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
   wy_stor<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
@@ -149,7 +139,6 @@ totQ<-inflSum[jul,]
 
 colRamp<-pal(21)[as.numeric(cut(totQ,breaks = 21))]
 
-
 overage<-function(LHSout){
   days_over<-matrix(data=NA, nrow = n, ncol = 21)
   vol_over<-matrix(data=NA, nrow = n, ncol = 21)
@@ -166,23 +155,44 @@ overage<-function(LHSout){
   return(out)
 }
 
-cols<-par(21)
+overageDat<-function(LHSout, LHSmod){
+  over<-overage(LHSout)
+  a<<-over$days_over
+  av<<-as.vector(a)
 
-plt_overage<-function(LHSout, params, sm){
-  Qover<-overage(LHSout)
-  a<-Qover$days_over
-  y<-as.data.frame(a[,1])
-  x<-bothLHS$data[sm]
-  plt<- plot(x[,],y[,], ylab="Days Over Discharge Limit", xlab="Discharge Planning Days", ylim=c(0.5, 35), pch=19, col=cols[1])
-    for (i in 2:21){
-     y<-as.data.frame(a[,i])
-     x<-bothLHS$data[sm]
-     points(x[,],y[,], pch=19, col=cols[i]) #color ramp isnt quite right
-    } 
-  return(plt)
+  v<<-over$vol_over
+  vv<<-as.vector(v)
+  
+  y<<-as.matrix(LHSmod$data['s'])
+  x<<-as.matrix(LHSmod$data['m'])
 }
 
-plt_overage(mOut, mLHS$data, 'm')
+overageDat(both, bothLHS)
+par(mfrow=c(4,4))
+#plot number of days over discharge limits
+for (i in 1:21){
+  ai<-a[,i]
+  maxOver<-max(ai)
+  
+  if(maxOver>1){
+  colRamp<<-pal(maxOver)[as.numeric(cut(ai, breaks = maxOver))]
+  plot(x, y, ylab="s", xlab="m", ylim=c(0.5, 30), xlim=c(0.5, 30), pch=19, col=colRamp)+
+    ColorLegend(x='top', cols = pal(maxD), labels=seq(from=0, to=82, by=10), cntrlbl=TRUE, horiz=TRUE)
+  }
+}
+  
+par(mfrow=c(4,5))
+#plot number of days over discharge limits
+for (i in 1:21){
+  ai<-v[,i]
+  maxOver<-max(ai)
+  
+  if(maxOver>1){
+    colRamp<<-pal(maxOver)[as.numeric(cut(ai, breaks = maxOver))]
+    plot(x, y, ylab="s", xlab="m", ylim=c(0.5, 30), xlim=c(0.5, 30), pch=19, col=colRamp)+
+      ColorLegend(x='top', cols = pal(maxD), labels=seq(from=0, to=82, by=10), cntrlbl=TRUE, horiz=TRUE)
+  }
+}
 
 #------------------------------------------------------------------------------------------------
 # Mean discharge for each day of each water year under all model runs with confidence intervals and standard deviations
