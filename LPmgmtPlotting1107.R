@@ -79,10 +79,10 @@ plotfn<- function(wy, resl){
 #plotfn(20)
 
 for (wy in hml){
-  plotfn(wy, res5)
+  plotfn(wy, res)
 }
 
-grid.arrange(g3, g4, g20, nrow=1)
+grid.arrange(g4, g3, g20, nrow=1)
 
 
 grid.arrange(g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, nrow=1)
