@@ -5,6 +5,26 @@ library(gtable)
 library(grid)
 
 
+m=1
+s=1
+res<- outflowStor(s,m)
+m=1
+s=28
+res2<- outflowStor(s,m)
+m=28
+s=1
+res3<- outflowStor(s,m)
+m=14
+s=14
+res4<- outflowStor(s,m)
+m=28
+s=28
+res5<- outflowStor(s,m)
+
+
+hml<-c(4,3,20)
+
+
 fill<- rep(c("Modeled", "Observed", "Max"), each=196)
 datelab<-seq(as.Date("1997-01-01"), as.Date("1997-07-15"), by="1 day")
 x<- datelab
@@ -12,12 +32,14 @@ x2<- rep(datelab, times=4)
 qs<-rep(c("Inflow", "Limit","Modeled Q", "Observed Q"), each=196)
 gnames<- c("g98", "g99", "g00", 'g01', "g02", "g03", "g04","g05", 'g06', "g07", "g08", "g09", "g10", "g11", "g12", "g13", "g14", "g15", "g16", "g17")
 
+
+
 #add variable that is == results 
-plotfn<- function(wy){
-  vol<-(c(FC$stor[FC$WY == yrs[wy]],FC$AF[FC$WY == yrs[wy]],FC$maxS[FC$WY == yrs[wy]]))/10000
+plotfn<- function(wy, resl){
+  vol<-(c(resl[[wy]][,3],FC$AF[FC$WY == yrs[wy]],resl[[wy]][,1]))/10000 #modeled storage, actual storage, max storage
   df <- data.frame(fill,x,vol)
   
-  q<- c(FC$Q[FC$WY == yrs[wy]], qlim[1:196,2],FC$qo[FC$WY == yrs[wy]], FC$Qo[FC$WY == yrs[wy]])/1000
+  q<- c(FC$Q[FC$WY == yrs[wy]], qlim[1:196,2],resl[[wy]][,5], FC$Qo[FC$WY == yrs[wy]])/1000 # inflow, Q limit, modeled Q, actual Q
   dfQ<-data.frame(q, x2, qs)
   
   ps<-ggplot(df, aes(x=x, y=vol, fill=fill)) +
@@ -56,9 +78,11 @@ plotfn<- function(wy){
 }
 #plotfn(20)
 
-for (wy in 1:20){
-  plotfn(wy)
+for (wy in hml){
+  plotfn(wy, res5)
 }
+
+grid.arrange(g3, g4, g20, nrow=1)
 
 
 grid.arrange(g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, nrow=1)
