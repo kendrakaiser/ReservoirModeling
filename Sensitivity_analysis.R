@@ -290,6 +290,21 @@ bothSstats<-storstats(both)
 sSstats<-storstats(sOut)
 mSstats<-storstats(mOut)
 
+colRamp<<-pal(5)
+par(mfrow=c(2,1))
+plot(both$stor[[3]][,93], type='l', col=colRamp[1], ylim = c(546000,1032000))
+lines(both$stor[[3]][,125], col=colRamp[2])
+lines(both$stor[[3]][,203], col=colRamp[3])
+lines(both$stor[[3]][,34], col=colRamp[4])
+lines(both$stor[[3]][,386], col=colRamp[5])
+
+plot(both$Q[[3]][,93], type='l', col=colRamp[1], ylim=c(0,10000))
+lines(both$Q[[3]][,125], col=colRamp[2])
+lines(both$Q[[3]][,203], col=colRamp[3])
+lines(both$Q[[3]][,34], col=colRamp[4])
+lines(both$Q[[3]][,386], col=colRamp[5])
+
+
 
 matplot(bothSstats$sd, type='l', ylim=c(0,84000))
 matplot(mSstats$sd, type='l', ylim=c(0,84000))
