@@ -21,6 +21,8 @@ for (wy in 1:2){
 library(caTools)
 
 runQsd<-runsd(x, k)
+
+
 #make a few plots - e.g number, timing and volume that the managers exceeded the maxS for the day - and other plots from the nicholas data site
 #determine average day they start drafting for irrigation - e.g. once dsdt is negative and never goes positive again
 #--------------
@@ -32,11 +34,18 @@ exceedDate[,2] <- FC$doy[exceed]
 hist(exceedDate[,2])
 
 #Days managers exceeded max storage limits = 228
-Mexceed <- which(FC$AF > FC$maxS)
-MexceedDate=matrix(data=NA, nrow = length(Mexceed), ncol = 2)
-MexceedDate[,1] <- FC$WY[Mexceed]
-MexceedDate[,2] <- FC$doy[Mexceed]
-hist(MexceedDate[,2])
+MexceedDate=matrix(data=NA, nrow = 40, ncol = 21)
+
+for (wy in 1:21){
+  MaxStor<- results[[wy]][,1]
+  ManagedStor<- FC$AF[FC$WY == yrs[wy]]
+  Mexceed <- which(ManagedStor > FC$maxS)
+    if(length(Mexceed >0)){
+      MexceedDate[, wy] <- FC$doy[Mexceed]
+    }
+}
+
+  hist(MexceedDate[,2])
 
 topped <- which(FC$stor > maxAF)
 FC$topped<- FC$stor > maxAF
