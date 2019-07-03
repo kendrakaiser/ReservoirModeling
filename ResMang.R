@@ -124,6 +124,7 @@ minRelease<- function(day, volF){
   minEvac<- FCvolAP - availStor[day] #minimum evaculation btw today and April 1
   minReleaseVol <- minEvac+volFmar
   Qmin <- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
+  #if march 1st check lowell volume and if < full fill at whatever rate every day till full
   
   ##If statements that constrain for high flows and ramp rates?
 }
