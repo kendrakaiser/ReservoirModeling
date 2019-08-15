@@ -10,7 +10,7 @@ res<-read.csv("Data/BRB_reservoir_data_1997-2018_noleap.csv")
 res$Date <-as.Date(res$Date, format ="%m/%d/%y")
 res$totAF<- res$andAF +res$arkAF +res$lucAF
 res$qoV<-res$qo*24*60*60*.0000229569 #convert from flow rate (cfs) to volume (acre-feet)
-res$resid<- res$in_unreg- res$in_computed
+res$resid<- res$in_unreg- res$in_computed #qu is the correct unregulated flow estimate
 res$Y = as.numeric(format(res$Date, format = "%Y"))
 res$M = as.numeric(format(res$Date, format = "%m"))
 res$WY[res$M <10]= res$Y[res$M <10]
@@ -124,8 +124,17 @@ minRelease<- function(day, volF){
   minEvac<- FCvolAP - availStor[day] #minimum evaculation btw today and April 1
   minReleaseVol <- minEvac+volFmar
   Qmin <- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
-  #if march 1st check lowell volume and if < full fill at whatever rate every day till full
   
+  #if march 1st check lowell volume and if < full fill at whatever rate every day till full
+  if (day = 51){
+    low_under <- 155237 - lowell$low_af #calc how much under maximum storage the lake is
+    dailyLowellFill <- low_under/39 * v2f #days between start fill date (Feb21st) to March 31st
+    
+    if (Qmin < dailyLowellFill){ #not set up right yet because this will only happen on feb21
+      Qmin <- dailyLowellFill
+    }
+    
+  }
   ##If statements that constrain for high flows and ramp rates?
 }
 #determine minimum daily release after April 1
