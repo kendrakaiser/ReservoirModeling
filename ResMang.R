@@ -126,14 +126,17 @@ minRelease<- function(day, volF){
   Qmin <- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
   
   #if march 1st check lowell volume and if < full fill at whatever rate every day till full
-  if (day >= 51 && day < 91 && LowellAF < 155237){
-    low_under <- 155237 - lowell$low_af #calc how much under maximum storage the lake is
-    LowellAF[day] <- low_under/39 * v2f #days between start fill date (Feb21st) to March 31st
+  if (day >= 51 && day < 91 && LowellAF[day-1] < 155237){
+    low_under <- 155237 - lowell$low_af[day-1] 
+    #"This line 26 is where it be breaking -bc cant be the first day " - that works now
+    #calc how much under maximum storage the lake is
+    Lowell_cfs[day] <- low_under/39 * v2f #days between start fill date (Feb21st) to March 31st
+    LowellAF[day] <- lowell$low_af[day-1] + low_under/39
     
-    if (Qmin < dailyLowellFill){ #not set up right yet because this will only happen on feb21
-      Qmin <- dailyLowellFill
+    if (Qmin < Lowell_cfs[day]){ #not set up right yet because this will only happen on feb21
+      Qmin <- Lowell_cfs[day]
+      LowellAF[day] <- lowell$low_af[day-1] + (Qmin*f2v)
     }
-    
   }
   ##If statements that constrain for high flows and ramp rates?
 }
@@ -231,14 +234,15 @@ outflowStor<-function(s,m){
     storF<<-matrix(data=NA, nrow = jul, ncol = 1)
     qo<<-matrix(data=NA, nrow = jul, ncol = 1) #modeled outflow from reservoir
     dS<<-matrix(data=NA, nrow = jul, ncol = 1)
-    LowellAF<<-matrix(data=NA, nrow=jul, ncol = 1) 
+    LowellAF<<-matrix(data=NA, nrow=jul, ncol = 1) #modeled Lowell Acre-feet
+    Lowell_cfs<<-matrix(data=NA, nrow=jul, ncol = 1) #modeled flow being sent to Lowell
     #---------
     # initalize
     #----- 
-    stor[1] <<- FC$AF[doy1[wy]] #initialize with actual storage on Jan 1
+    stor[1] <<- FC$AF[doy1[wy]] ####"this will only work if sent to global env "#initialize with actual storage on Jan 1
     Qin<- FC$Q[FC$WY == yrs[wy]]
     maxS <<- predMaxS(m) #vector of 198 days of max storage out to M days
-  
+    LowellAF<<-lowell$low_af[1:51]  ###"this needs an update to be associated with each water year - berak up the date"
     #----- run all the functions to get to discharge and updated storage
       for (day in 1:jul){ 
       volF<<- FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow  
@@ -246,6 +250,8 @@ outflowStor<-function(s,m){
       # Min flood control release for storage goals on April 1 and every 15 days after
       if (day < 91){
       minFCq[day]<<-minRelease(day, volF)
+    ## # "Error in minFCq[day] <<- minRelease(day, volF) : 
+## # replacement has length zero" #put unit test here
     } else {
       minFCq[day]<<-minReleaseApril(day, volF)
     }
