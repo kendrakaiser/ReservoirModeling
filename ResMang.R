@@ -126,20 +126,28 @@ minRelease<- function(day, volF){
   Qmin <- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
   
   #if march 1st check lowell volume and if < full fill at whatever rate every day till full
-  if (day >= 51 && day < 91 && LowellAF[day-1] < 155237){
-    low_under <- 155237 - lowell$low_af[day-1] 
-    #"This line 26 is where it be breaking -bc cant be the first day " - that works now
-    #calc how much under maximum storage the lake is
-    Lowell_cfs[day] <- low_under/39 * v2f #days between start fill date (Feb21st) to March 31st
-    LowellAF[day] <- lowell$low_af[day-1] + low_under/39
-    
-    if (Qmin < Lowell_cfs[day]){ #not set up right yet because this will only happen on feb21
-      Qmin <- Lowell_cfs[day]
-      LowellAF[day] <- lowell$low_af[day-1] + (Qmin*f2v)
-    }
-  } else{Qmin <- Qmin}
+  if (day<51){
+      Lowell_cfs<<-0
+} else if (day >= 51 && day < 91 && LowellAF[day-1] < 155237){
+      low_under <- 155237 - lowell$low_af[day-1] 
+      #calc how much under maximum storage the lake is
+      Lowell_flow_est <- low_under/(91-day) * v2f #days between start fill date (Feb21st) to March 31st
+      #if the min flow isnt enough to slowly fill lowell then increase it 
+      if (Qmin < Lowell_flow_est){ 
+        Qmin <- Lowell_flow_est
+      } else{
+        Lowell_flow_est <- Qmin
+      }
+      
+      Lowell_cfs[day] <<- Lowell_flow_est
+      LowellAF[day] <<- lowell$low_af[day-1] + (Lowell_flow_est * f2v)
   
-  return(Qmin) #having the retrn(Qmin) at least got us a NA_real instead of NULL
+  } else if (day >=91){
+    LowellAF[day]<<-LowellAF[day-1]
+    Lowell_cfs<<-0}
+
+  
+  return(Qmin)
   ##If statements that constrain for high flows and ramp rates?
 }
 #determine minimum daily release after April 1
