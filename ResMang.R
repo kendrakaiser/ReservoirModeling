@@ -126,9 +126,9 @@ minRelease<- function(day, volF){
   Qmin <- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
   
   #if march 1st check lowell volume and if < full fill at whatever rate every day till full
-  if (day = 51){
+  if (day >= 51 && day < 91 && LowellAF < 155237){
     low_under <- 155237 - lowell$low_af #calc how much under maximum storage the lake is
-    dailyLowellFill <- low_under/39 * v2f #days between start fill date (Feb21st) to March 31st
+    LowellAF[day] <- low_under/39 * v2f #days between start fill date (Feb21st) to March 31st
     
     if (Qmin < dailyLowellFill){ #not set up right yet because this will only happen on feb21
       Qmin <- dailyLowellFill
@@ -231,6 +231,7 @@ outflowStor<-function(s,m){
     storF<<-matrix(data=NA, nrow = jul, ncol = 1)
     qo<<-matrix(data=NA, nrow = jul, ncol = 1) #modeled outflow from reservoir
     dS<<-matrix(data=NA, nrow = jul, ncol = 1)
+    LowellAF<<-matrix(data=NA, nrow=jul, ncol = 1) 
     #---------
     # initalize
     #----- 
