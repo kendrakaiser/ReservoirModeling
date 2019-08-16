@@ -137,7 +137,9 @@ minRelease<- function(day, volF){
       Qmin <- Lowell_cfs[day]
       LowellAF[day] <- lowell$low_af[day-1] + (Qmin*f2v)
     }
-  }
+  } else{Qmin <- Qmin}
+  
+  return(Qmin) #having the retrn(Qmin) at least got us a NA_real instead of NULL
   ##If statements that constrain for high flows and ramp rates?
 }
 #determine minimum daily release after April 1
