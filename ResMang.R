@@ -128,7 +128,7 @@ minRelease<- function(day, volF){
   #if march 1st check lowell volume and if < full fill at whatever rate every day till full
   if (day<51){
       Lowell_cfs<<-0
-} else if (day >= 51 && day < 91 && LowellAF[day-1] < 155237){
+} #else if (day >= 40 && day < 91 && LowellAF[day-1] < 155237){
       low_under <- 155237 - lowell$low_af[day-1] 
       #calc how much under maximum storage the lake is
       Lowell_flow_est <- low_under/(91-day) * v2f #days between start fill date (Feb21st) to March 31st
@@ -146,7 +146,6 @@ minRelease<- function(day, volF){
     LowellAF[day]<<-LowellAF[day-1]
     Lowell_cfs<<-0}
 
-  
   return(Qmin)
   ##If statements that constrain for high flows and ramp rates?
 }
