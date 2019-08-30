@@ -132,9 +132,9 @@ minRelease<- function(day, volF){
   Qmin <- (minReleaseVol*v2f)/(jul-day+1) #associated  qmin
   
   #if march 1st check lowell volume and if < full fill at whatever rate every day till full
-  if (day<51){
-      Lowell_cfs<<-0
-} else if (day >= 40 && day < 91 && LowellAF[day-1] < 155237){
+  if (day<6){
+      Lowell_cfs[day] <<-0
+} else if (day >= 6 && day < 91 && LowellAF[day-1] < 155237){
       low_under <- 155237 - lowell$low_af[day-1] 
       #calc how much under maximum storage the lake is
       Lowell_flow_est <- low_under/(91-day) * v2f #days between start fill date (Feb21st) to March 31st
@@ -150,7 +150,7 @@ minRelease<- function(day, volF){
   
   } else if (day >=91){
     LowellAF[day]<<-LowellAF[day-1]
-    Lowell_cfs<<-0}
+    Lowell_cfs[day]<<-0}
 
   return(Qmin)
   ##If statements that constrain for high flows and ramp rates?
@@ -257,7 +257,7 @@ outflowStor<-function(s,m){
     stor[1] <<- FC$AF[doy1[wy]] ####"this will only work if sent to global env "#initialize with actual storage on Jan 1
     Qin<- FC$Q[FC$WY == yrs[wy]]
     maxS <<- predMaxS(m) #vector of 198 days of max storage out to M days
-    LowellAF<<-lowell$low_af[1:51]  ###"this needs an update to be associated with each water year - berak up the date"
+    LowellAF[1:5]<<-FC$LowellAF[doy1[wy]:(doy1[wy]+5)]  ###"this needs an update to be associated with each water year - break up the date"
     #----- run all the functions to get to discharge and updated storage
       for (day in 1:jul){ 
       volF<<- FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow  
@@ -279,8 +279,8 @@ outflowStor<-function(s,m){
     evalS(Qin, day, stor, maxS, minFCq, s, m)
     }
   
-    out<- cbind(maxS[,1], storF, stor, minFCq, qo) #availStor dS, only use one arrow or it will overwrite in global env
-    colnames(out)<-c('maxS','storF', 'stor', 'minQ', 'qo')
+    out<- cbind(maxS[,1], storF, stor, minFCq, qo, Lowell_cfs) #availStor dS, only use one arrow or it will overwrite in global env
+    colnames(out)<-c('maxS','storF', 'stor', 'minQ', 'qo', 'Lowell_cfs')
     results[[wy]]<-out
     #discharge[,wy]<-qo
     
