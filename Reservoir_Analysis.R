@@ -6,13 +6,13 @@ s=14
 results<- outflowStor(s,m)
 
 #plot the initial results
-for (wy in 1:2){
+for (wy in 1:21){
   plot(results[[wy]][,1], type='l', ylim=c(300000, 1010200)) #max storage
-  lines(results[[wy]][,4], col='orange') #modeled storage
+  lines(results[[wy]][,3], col='orange') #modeled storage
   lines(FC$AF[FC$WY == yrs[wy]], col='green') #actual storage
   
   #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
-  plot(results[[wy]][,7], type='l', lty=3, col='orange', ylim=c(0,16000)) #modeled discharge
+  plot(results[[wy]][,5], type='l', lty=3, col='orange', ylim=c(0,16000)) #modeled discharge
   lines(qlim[,2], type='l', lty=3, col='grey17')
   lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
 }
