@@ -30,7 +30,7 @@ runQsd<-runsd(x, k)
 #Days managers or model exceeded max storage or discharge limits
 MexceedDate=matrix(data=NA, nrow = 60, ncol = 21)
 Mod_exceedDate=matrix(data=NA, nrow = 60, ncol = 21)
-days_topped=matrix(data=NA, nrow = 26, ncol = 21)
+days_topped=matrix(data=NA, nrow = 30, ncol = 21)
 
 Mang_overQlim=matrix(data=NA, nrow = 110, ncol = 21)
 Mod_overQlim=matrix(data=NA, nrow = 110, ncol = 21)
