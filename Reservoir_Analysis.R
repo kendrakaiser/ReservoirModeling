@@ -27,13 +27,23 @@ runQsd<-runsd(x, k)
 #determine average day they start drafting for irrigation - e.g. once dsdt is negative and never goes positive again
 #--------------
 
-#Days managers or model exceeded max storage limits
+#Days managers or model exceeded max storage or discharge limits
 MexceedDate=matrix(data=NA, nrow = 60, ncol = 21)
 Mod_exceedDate=matrix(data=NA, nrow = 60, ncol = 21)
+days_topped=matrix(data=NA, nrow = 10, ncol = 21)
+
+Mang_overQlim=matrix(data=NA, nrow = 110, ncol = 21)
+Mod_overQlim=matrix(data=NA, nrow = 110, ncol = 21)
+
+DaysOver=matrix(data=NA, nrow = 6, ncol = 21)
+rownames(DaysOver)<-c("ManOverS", "ModOverS", "ManOverQ", "ModOverQ", "ManVolQ", "ModVolQ")
 
 for (wy in 1:21){
   MaxStor<- results[[wy]][,1]
   ModStor<- results[[wy]][,3]
+  ModQ<- results[[wy]][,5]
+  ManQ<-FC$Qo[FC$WY == yrs[wy]]
+  
   ManagedStor<- FC$AF[FC$WY == yrs[wy]]
   Mexceed <- which(ManagedStor > MaxStor)
   l=length(Mexceed)
@@ -45,13 +55,27 @@ for (wy in 1:21){
   if(ll>0){
     Mod_exceedDate[1:ll, wy]<-Mod_exceed
   }
+  topped <- which(ModStor > maxAF)
+  lll<-length(topped)
+  if (lll>0){
+    days_topped[1:lll, wy]<-topped
+  }
+  Mg_Q<- which(ManQ > qlim[1:196,2])
+  ml<-length( Mg_Q)
+  if (ml>0){
+    Mang_overQlim[1:ml, wy]<-Mg_Q
+    Man_Vol_over_Qlim<-sum(ManQ[Mg_Q]-qlim[Mg_Q,2])
+  } else{Man_Vol_over_Qlim<-0}
+  Mod_Q <- which(ModQ >qlim[1:196,2])
+  mll<-length(Mod_Q)
+  if (mll>0){
+    Mod_overQlim[1:mll, wy]<-Mod_Q
+    Mod_Vol_over_Qlim<-sum(ModQ[Mod_Q]-qlim[Mod_Q,2])
+  } else{Mod_Vol_over_Qlim<-0}
+  
+  DaysOver[,wy]<-c(l,ll,ml,mll,Man_Vol_over_Qlim, Mod_Vol_over_Qlim)
 }
 
-  hist(MexceedDate[,2])
-
-topped <- which(FC$stor > maxAF)
-FC$topped<- FC$stor > maxAF
-hist(FC$doy[FC$topped == 'TRUE'])
 
 #direction of change in storage and last day of increasing storage
 #coefficient of variation for each year of managed system, natural, and modeled
