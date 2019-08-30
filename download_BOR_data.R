@@ -29,9 +29,9 @@ write.csv(res, file="BRB_reservoir_data_1997-2018.csv")
 lowell<-"Data/lowell_daily.htm"
 data_lowell <- readHTMLTable(lowell, header=TRUE, as.data.frame = TRUE, stringsAsFactors=FALSE)
 low=data_lowell[[1]]
-write.csv(low, file="Lowell_data.csv")
+write.csv(low, file="Data/Lowell_data.csv")
 
 nyc<-"Data/NY_Canal.htm"
 data_nyc <- readHTMLTable(nyc, header=TRUE, as.data.frame = TRUE, stringsAsFactors=FALSE)
 ny_canal=data_nyc[[1]]
-write.csv(ny_canal, file="NY_canal_data.csv")
+write.csv(ny_canal, file="Data/NY_canal_data.csv")
