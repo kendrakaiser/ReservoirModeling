@@ -1,10 +1,13 @@
-#import, sum storage for Anderson Ranch, Arrowrock, and Lucky Peak Reservoirs
+## Model of Reservoir Storage and Outflow in the Boise River Basin
+## Code based of of the ACOE Water Control Manual
+## Kendra E Kaiser
+
 setwd("~/Documents/GitRepos/ReservoirModeling")
-#setwd("D:/Documents/GitRepos/ReservoirModeling")
 
 #--------------------------------------
 # Import reservoir data 
 #--------------------------------------
+#sum storage for Anderson Ranch, Arrowrock, and Lucky Peak Reservoirs
 # missing data was replaced by average of bracketing values
 res<-read.csv("Data/BRB_reservoir_data_1997-2018_noleap.csv")
 res$Date <-as.Date(res$Date, format ="%m/%d/%y")
@@ -15,8 +18,10 @@ res$Y = as.numeric(format(res$Date, format = "%Y"))
 res$M = as.numeric(format(res$Date, format = "%m"))
 res$WY[res$M <10]= res$Y[res$M <10]
 res$WY[res$M >= 10] = res$Y[res$M >= 10]+1
-lowell<-read.csv("Data/lowell_data.csv")
+lowell<-read.csv("Data/lowell_data.csv") #fb = reservoir water surface elevation in ft
 res$low<-lowell$low_af
+nyc<-read.csv("Data/NY_canal_data.csv")
+res$NYC<-nyc$bsei_qj[1:7646]
 
 # load Rule Curve data --------
 fv<-read.csv("Data/ForecastVol.csv")
@@ -41,8 +46,8 @@ jul=196 #change to 212 #july 31st once update fcVol csv
 reps <-100
 idx<-which(res$doy >= 1 & res$doy <= jul)
 rows<- length(idx)
-FC<- data.frame(res$doy[idx],res$WY[idx], res$totAF[idx], res$in_unreg[idx], res$qo[idx])
-colnames(FC)<-c("doy", "WY", "AF", "Q", "Qo")
+FC<- data.frame(res$doy[idx],res$WY[idx], res$totAF[idx], res$in_unreg[idx], res$qo[idx], res$low[idx], res$NYC[idx])
+colnames(FC)<-c("doy", "WY", "AF", "Q", "Qo", "LowellAF", "NYC_cfs")
 yrs<- 1998:2018
 
 #calculate daily forecast values
@@ -90,6 +95,7 @@ reqStor<- function(sumQin,doy){
 
   return(fcs)
 } 
+
 #predict max storage in the next m days
 predMaxS<- function(m){
   for (day in 1:jul){
@@ -128,11 +134,11 @@ minRelease<- function(day, volF){
   #if march 1st check lowell volume and if < full fill at whatever rate every day till full
   if (day<51){
       Lowell_cfs<<-0
-} #else if (day >= 40 && day < 91 && LowellAF[day-1] < 155237){
+} else if (day >= 40 && day < 91 && LowellAF[day-1] < 155237){
       low_under <- 155237 - lowell$low_af[day-1] 
       #calc how much under maximum storage the lake is
       Lowell_flow_est <- low_under/(91-day) * v2f #days between start fill date (Feb21st) to March 31st
-      #if the min flow isnt enough to slowly fill lowell then increase it 
+      #if the min flow isnt enough to slowly fill Lowell then increase it 
       if (Qmin < Lowell_flow_est){ 
         Qmin <- Lowell_flow_est
       } else{
