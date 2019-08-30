@@ -1,5 +1,5 @@
 library(XML)
-setwd("C:/Users/kendrakaiser/Dropbox/BSU/R/WaterActors/ToyModels/ReservoirModeling")
+setwd("~/Documents/GitRepos/ReservoirModeling/")
 
 # pu: cumulative water year precip; qv: power discharge; px: observed daily totatl precip; fb: reservoir water surface elvation; af: reservoir water storage, acre-feet; ID: computed reservoir inflow
 
@@ -30,3 +30,8 @@ lowell<-"Data/lowell_daily.htm"
 data_lowell <- readHTMLTable(lowell, header=TRUE, as.data.frame = TRUE, stringsAsFactors=FALSE)
 low=data_lowell[[1]]
 write.csv(low, file="Lowell_data.csv")
+
+nyc<-"Data/NY_Canal.htm"
+data_nyc <- readHTMLTable(nyc, header=TRUE, as.data.frame = TRUE, stringsAsFactors=FALSE)
+ny_canal=data_nyc[[1]]
+write.csv(ny_canal, file="NY_canal_data.csv")
