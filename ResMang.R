@@ -186,15 +186,17 @@ minReleaseApril<-function(day, volF){
 #forecast what the storage would be in s days given previous ∆ in S and make those changes over m days
 forecastS<-function(s,m,day){
   if (day > s+1){
-    w=seq(s)/s
-    stors=stor[(day-s):day]
-    dstor=matrix(data=NA, nrow = s, ncol = 1)
-    for(i in 1:s){
-      dstor[i]=(stor[i+1]-stor[i])
-    }
-    weightedDStor=sum(w*dstor)/sum(w)
-    #dsdt= (stor[day] - stor[day-s])/s #calculate daily change in storage over past s days --> change this to 1) take average of dS over s days, 2) create weighted average
-    storF[day] <<- (weightedDStor*m)+stor[day] #forecasted flow for today is the change in storage* m days subtracted form todays storage -- does that make sense??
+    #w=seq(s)/s
+    #stors=stor[(day-s):day]
+    #dstor=matrix(data=NA, nrow = s, ncol = 1)
+    #for(i in 1:s){
+    #  dstor[i]=(stor[i+1]-stor[i])
+    #}
+    #dsdt=sum(w*dstor)/sum(w) #weighted change in storage
+    #dsdt=mean(dstor) 
+    dsdt= (stor[day] - stor[day-s])/s #calculate daily change in storage over past s days 
+    
+    storF[day] <<- (dsdt*m)+stor[day] #forecasted flow for today is the change in storage* m days added to todays storage
   } else {storF[day]<<- stor[day]}
 }  
 #evaluate change in storage in regard to the forecasted storage to prevent going over maxS
