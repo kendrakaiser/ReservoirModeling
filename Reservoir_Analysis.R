@@ -6,7 +6,7 @@ s=14
 results<- outflowStor(s,m)
 
 #plot the initial results
-for (wy in 1:21){
+for (wy in 1:2){
   plot(results[[wy]][,1], type='l', ylim=c(300000, 1010200)) #max storage
   lines(results[[wy]][,3], col='orange') #modeled storage
   lines(FC$AF[FC$WY == yrs[wy]], col='green') #actual storage
@@ -26,23 +26,25 @@ runQsd<-runsd(x, k)
 #make a few plots - e.g number, timing and volume that the managers exceeded the maxS for the day - and other plots from the nicholas data site
 #determine average day they start drafting for irrigation - e.g. once dsdt is negative and never goes positive again
 #--------------
-#Days model exceeded max storage = 170
-exceed <- which(FC$stor > FC$maxS)
-exceedDate=matrix(data=NA, nrow = length(exceed), ncol = 2)
-exceedDate[,1] <- FC$WY[exceed]
-exceedDate[,2] <- FC$doy[exceed]
-hist(exceedDate[,2])
 
-#Days managers exceeded max storage limits = 228
-MexceedDate=matrix(data=NA, nrow = 40, ncol = 21)
+#Days managers or model exceeded max storage limits
+MexceedDate=matrix(data=NA, nrow = 60, ncol = 21)
+Mod_exceedDate=matrix(data=NA, nrow = 60, ncol = 21)
 
 for (wy in 1:21){
   MaxStor<- results[[wy]][,1]
+  ModStor<- results[[wy]][,3]
   ManagedStor<- FC$AF[FC$WY == yrs[wy]]
-  Mexceed <- which(ManagedStor > FC$maxS)
-    if(length(Mexceed >0)){
-      MexceedDate[, wy] <- FC$doy[Mexceed]
-    }
+  Mexceed <- which(ManagedStor > MaxStor)
+  l=length(Mexceed)
+  if(l>0){
+    MexceedDate[1:l, wy] <-Mexceed
+  }
+  Mod_exceed <- which(ModStor > MaxStor)
+  ll=length(Mod_exceed)
+  if(ll>0){
+    Mod_exceedDate[1:ll, wy]<-Mod_exceed
+  }
 }
 
   hist(MexceedDate[,2])
@@ -51,7 +53,7 @@ topped <- which(FC$stor > maxAF)
 FC$topped<- FC$stor > maxAF
 hist(FC$doy[FC$topped == 'TRUE'])
 
-#direction of change in storage and last day of increasing sotrage
+#direction of change in storage and last day of increasing storage
 #coefficient of variation for each year of managed system, natural, and modeled
 library(sjstats)
 dervDS=matrix(data=NA, nrow = 195, ncol = 1)
