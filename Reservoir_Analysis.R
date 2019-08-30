@@ -6,15 +6,15 @@ s=14
 results<- outflowStor(s,m)
 
 #plot the initial results
-for (wy in 1:2){
+for (wy in 1:21){
   plot(results[[wy]][,1], type='l', ylim=c(300000, 1010200)) #max storage
   lines(results[[wy]][,3], col='orange') #modeled storage
   lines(FC$AF[FC$WY == yrs[wy]], col='green') #actual storage
   
   #plot(Qmin, type='l', col='blue', ylim=c(0,16000))
-  plot(results[[wy]][,5], type='l', lty=3, col='orange', ylim=c(0,16000)) #modeled discharge
-  lines(qlim[,2], type='l', lty=3, col='grey17')
-  lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
+  #plot(results[[wy]][,5], type='l', lty=3, col='orange', ylim=c(0,16000)) #modeled discharge
+  #lines(qlim[,2], type='l', lty=3, col='grey17')
+  #lines(FC$Qo[FC$WY == yrs[wy]], type='l', lty=5, lwd='1', col='skyblue1') #manged outflow
 }
 
 #running standard deviation of managers outflow
@@ -30,13 +30,13 @@ runQsd<-runsd(x, k)
 #Days managers or model exceeded max storage or discharge limits
 MexceedDate=matrix(data=NA, nrow = 60, ncol = 21)
 Mod_exceedDate=matrix(data=NA, nrow = 60, ncol = 21)
-days_topped=matrix(data=NA, nrow = 10, ncol = 21)
+days_topped=matrix(data=NA, nrow = 26, ncol = 21)
 
 Mang_overQlim=matrix(data=NA, nrow = 110, ncol = 21)
 Mod_overQlim=matrix(data=NA, nrow = 110, ncol = 21)
 
-DaysOver=matrix(data=NA, nrow = 6, ncol = 21)
-rownames(DaysOver)<-c("ManOverS", "ModOverS", "ManOverQ", "ModOverQ", "ManVolQ", "ModVolQ")
+DaysOver=matrix(data=NA, nrow = 21, ncol = 6)
+colnames(DaysOver)<-c("ManOverS", "ModOverS", "ManOverQ", "ModOverQ", "ManVolQ", "ModVolQ")
 
 for (wy in 1:21){
   MaxStor<- results[[wy]][,1]
@@ -73,7 +73,7 @@ for (wy in 1:21){
     Mod_Vol_over_Qlim<-sum(ModQ[Mod_Q]-qlim[Mod_Q,2])
   } else{Mod_Vol_over_Qlim<-0}
   
-  DaysOver[,wy]<-c(l,ll,ml,mll,Man_Vol_over_Qlim, Mod_Vol_over_Qlim)
+  DaysOver[wy,]<-c(l,ll,ml,mll,Man_Vol_over_Qlim, Mod_Vol_over_Qlim)
 }
 
 
@@ -81,25 +81,40 @@ for (wy in 1:21){
 #coefficient of variation for each year of managed system, natural, and modeled
 library(sjstats)
 dervDS=matrix(data=NA, nrow = 195, ncol = 1)
+dervDQo=matrix(data=NA, nrow = 195, ncol = 1)
+dervDQ_mod=matrix(data=NA, nrow = 195, ncol = 1)
+dervD_nyc=matrix(data=NA, nrow = 195, ncol = 1)
+dervD_nycMod=matrix(data=NA, nrow = 195, ncol = 1)
+
 TotalQ=matrix(data=NA, nrow = 21, ncol = 1)
-cvQ=matrix(data=NA, nrow = 21, ncol = 1)
+cvQin=matrix(data=NA, nrow = 21, ncol = 1)
 cvQman=matrix(data=NA, nrow = 21, ncol = 1)
 cvQmod=matrix(data=NA, nrow = 21, ncol = 1)
-DOY_decreasingS=matrix(data=NA, nrow = 21, ncol = 1)
+
+DOY_dx=matrix(data=NA, nrow = 21, ncol = 5)
+colnames(DOY_dx)<-c("StorDec", "QoInc", "ModQinc", "NYCQinc", "ModNYCinc")
 
 for (wy in 1:21){
   stor=FC$AF[FC$WY == yrs[wy]]
   Q=FC$Q[FC$WY == yrs[wy]]
   Qo=FC$Qo[FC$WY == yrs[wy]]
-  qo=FC$qo[FC$WY == yrs[wy]]
+  Mod_Q=results[[wy]][,5]
+  Modnyc=results[[wy]][,6]
+  nyc=FC$NYC_cfs[FC$WY == yrs[wy]]
   TotalQ[wy] = sum(Q)
-  cvQ[wy]= cv(Q)
+  
+  cvQin[wy]= cv(Q)
   cvQman[wy]= cv(Qo)
-  cvQmod[wy]= cv(qo)
+  cvQmod[wy]= cv(Mod_Q)
   for(i in 1:195){
     dervDS[i]=(stor[i+1]/stor[i])
+    dervDQo[i]=(Qo[i+1]/Qo[i])
+    dervDQ_mod[i]=(Mod_Q[i+1]/Mod_Q[i])
+    dervD_nyc[i]=(nyc[i+1]/nyc[i])
+    dervD_nycMod[i]=(Modnyc[i+1]/Modnyc[i])
   }
-  DOY_decreasingS[wy]=max(which(dervDS > 1))
+  DOY_dx[wy,]=c(max(which(dervDS > 1)), min(which(dervDQo > 1)), min(which(dervDQ_mod > 1)), min(which(dervD_nyc > 1)), min(which(dervD_nycMod > 1)))
+  
 }
 
 #last day of increasing storage as a function of inflow
