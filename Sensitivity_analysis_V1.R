@@ -12,19 +12,6 @@ modelRun<-function(params){
   return(mapply(outflowStor, params[,1], params[,2]))
 }
 
-#set parameters
-maxDays=28
-q.arg<- list(list("min"=1, "max"=maxDays), list("min"=1, "max"=maxDays))
-names(q.arg)<-c("s", "m")
-factors<-c("s", "m")
-
-
-#myLHS<-LHS(model=modelRun, factors, N=100, q='qdunif', q.arg, nboot=4)
-n=5
-#create hypercubes with different parameter sets
-bothLHS <-LHS(model = NULL, factors, N=n, q='qdunif', q.arg, nboot=1)
-outB<-modelRun(bothLHS$data)
-
 #----------------------------------------------------------------------------
 # Re-organize output for analysis - all runs for each wy in one matrix
 #----------------------------------------------------------------------------
@@ -48,10 +35,10 @@ cleanData<-function(LHSrun){
   return(out)
 }
 
-both<-cleanData(outB)
-
-#turn this into a function that reads in LHS output
-#Days managers or model exceeded max storage or discharge limits
+#----------------------------------------------------------------------------
+#calculates the number of days model exceeded max storage or discharge limits 
+# and total wy volume of exceedance
+#----------------------------------------------------------------------------
 
 exceeds <- function(cleanedData){
   modEval<-lapply(1:21, matrix, data= NA, nrow=4, ncol=n)
@@ -81,4 +68,17 @@ exceeds <- function(cleanedData){
   return(modEval)
 }
 
+#----------------------------------------------------------------------------
+#set parameters
+maxDays=28
+q.arg<- list(list("min"=1, "max"=maxDays), list("min"=1, "max"=maxDays))
+names(q.arg)<-c("s", "m")
+factors<-c("s", "m")
+n=5
+
+#create hypercubes with different parameter sets
+bothLHS <-LHS(model = NULL, factors, N=n, q='qdunif', q.arg, nboot=1)
+outB<-modelRun(bothLHS$data)
+
+both<-cleanData(outB)
 modEval<-exceeds(both)
