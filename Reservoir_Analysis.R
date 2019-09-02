@@ -30,13 +30,14 @@ runQsd<-runsd(x, k)
 #Days managers or model exceeded max storage or discharge limits
 MexceedDate=matrix(data=NA, nrow = 60, ncol = 21)
 Mod_exceedDate=matrix(data=NA, nrow = 60, ncol = 21)
-days_topped=matrix(data=NA, nrow = 30, ncol = 21)
 
 Mang_overQlim=matrix(data=NA, nrow = 110, ncol = 21)
 Mod_overQlim=matrix(data=NA, nrow = 110, ncol = 21)
 
-DaysOver=matrix(data=NA, nrow = 21, ncol = 6)
-colnames(DaysOver)<-c("ManOverS", "ModOverS", "ManOverQ", "ModOverQ", "ManVolQ", "ModVolQ")
+DaysOver_Act=matrix(data=NA, nrow = 21, ncol = 3)
+colnames(DaysOver_Act)<-c("ManOverS", "ManOverQ", "ManVolQ")
+DaysOver_Mod=matrix(data=NA, nrow = 21, ncol = 3)
+colnames(DaysOver_Mod)<-c("ModOverS", "ModOverQ", "ModVolQ")
 
 for (wy in 1:21){
   MaxStor<- results[[wy]][,1]
@@ -73,7 +74,8 @@ for (wy in 1:21){
     Mod_Vol_over_Qlim<-sum(ModQ[Mod_Q]-qlim[Mod_Q,2])
   } else{Mod_Vol_over_Qlim<-0}
   
-  DaysOver[wy,]<-c(l,ll,ml,mll,Man_Vol_over_Qlim, Mod_Vol_over_Qlim)
+  DaysOver_Act[wy,]<-c(l,ml,Man_Vol_over_Qlim)
+  DaysOver_Mod[wy,]<-c(ll,mll, Mod_Vol_over_Qlim)
 }
 
 
