@@ -51,11 +51,11 @@ exceeds <- function(cleanedData){
       rownames(modEval[[i]])<-c('DaysStor', 'VolStor', 'DaysQlim', 'VolQlim')
       
       daysSover<- which(S > maxS)
-      Sover=length(stor_exceed)
+      Sover=length(daysSover)
       modEval[[i]]['DaysStor',j]<-Sover
       if(Sover>0){
         modEval[[i]]['VolStor',j]<-sum(S[daysSover]-maxS[daysSover])
-      }
+      } else{modEval[[i]]['VolStor',j]<-0}
 
       daysQover <- which(Q >qlim[1:196,2])
       Qover<-length(daysQover)
