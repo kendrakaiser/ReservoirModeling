@@ -3,6 +3,8 @@
 
 library(pse)
 library(DescTools)
+library(ggplot2)
+library(hexbin)
 
 #define probability function - discrete uniform density function for integer parameters
 qdunif<-function(p, min, max){
@@ -41,28 +43,28 @@ cleanData<-function(LHSrun){
 #----------------------------------------------------------------------------
 
 exceeds <- function(cleanedData){
-  modEval<-lapply(1:21, matrix, data= NA, nrow=4, ncol=n)
+  modEval<-lapply(1:21, matrix, data= NA, nrow=n, ncol=4)
   
   for (i in 1:21){
     for (j in 1:n){
       Q<-cleanedData$Q[[i]][,j]
       S<-cleanedData$stor[[i]][,j]
       maxS<-cleanedData$maxStor[,i]
-      rownames(modEval[[i]])<-c('DaysStor', 'VolStor', 'DaysQlim', 'VolQlim')
+      colnames(modEval[[i]])<-c('DaysStor', 'VolStor', 'DaysQlim', 'VolQlim')
       
       daysSover<- which(S > maxS)
       Sover=length(daysSover)
-      modEval[[i]]['DaysStor',j]<-Sover
+      modEval[[i]][j,'DaysStor']<-Sover
       if(Sover>0){
-        modEval[[i]]['VolStor',j]<-sum(S[daysSover]-maxS[daysSover])
-      } else{modEval[[i]]['VolStor',j]<-0}
+        modEval[[i]][j,'VolStor']<-sum(S[daysSover]-maxS[daysSover])
+      } else{modEval[[i]][j,'VolStor']<-0}
 
       daysQover <- which(Q >qlim[1:196,2])
       Qover<-length(daysQover)
-      modEval[[i]]['DaysQlim',j]<-Qover
+      modEval[[i]][j,'DaysQlim']<-Qover
       if (Qover>0){
-        modEval[[i]]['VolQlim',j]<-sum(Q[daysQover]-qlim[daysQover,2])
-      } else{modEval[[i]]['VolQlim',j]<-0}
+        modEval[[i]][j,'VolQlim']<-sum(Q[daysQover]-qlim[daysQover,2])
+      } else{modEval[[i]][j,'VolQlim']<-0}
     }
   }
   return(modEval)
@@ -74,7 +76,7 @@ maxDays=28
 q.arg<- list(list("min"=1, "max"=maxDays), list("min"=1, "max"=maxDays))
 names(q.arg)<-c("s", "m")
 factors<-c("s", "m")
-n=5
+n=500
 
 #create hypercubes with different parameter sets
 bothLHS <-LHS(model = NULL, factors, N=n, q='qdunif', q.arg, nboot=1)
@@ -82,3 +84,13 @@ outB<-modelRun(bothLHS$data)
 
 both<-cleanData(outB)
 modEval<-exceeds(both)
+
+#----------------------------------------------------------------------------
+#plot
+
+wy=1
+
+wydata <- as.data.frame(cbind(modEval[[wy]], bothLHS$data))
+
+d <- ggplot(data=wydata, aes(x=s, y=m))
+d + geom_hex()
