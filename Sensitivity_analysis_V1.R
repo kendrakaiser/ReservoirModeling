@@ -87,21 +87,23 @@ modEval<-exceeds(both)
 
 #----------------------------------------------------------------------------
 #plot
-
+## add ability to plot this for all years on one figure with equal scales -- then subset by below, average, or above average
 wy=1
 for (wy in 1:21){
   wydata <- as.data.frame(cbind(modEval[[wy]], bothLHS$data))
   d <- ggplot(data=wydata, aes(x=s, y=m))
   d + geom_hex()
   
-  p<- ggplot(wydata, aes(x=s, y=m, size = DaysStor, fill = VolStor)) +
+  pl<- ggplot(wydata, aes(x=s, y=m, size = DaysStor, fill = VolStor)) +
     geom_point(shape=21)+
-    scale_fill_continuous(low = "plum1", high = "purple4")
-  p
+    scale_fill_continuous(low = "plum1", high = "purple4")+
+    labs(size = "Days over Storage Limits", fill = "Volume Over Storage Limits")
+  pl
   
-  p<- ggplot(wydata, aes(x=s, y=m, size = DaysQlim, fill = VolQlim)) +
+  ql<- ggplot(wydata, aes(x=s, y=m, size = DaysQlim, fill = VolQlim)) +
     geom_point(shape=21)+
+    labs(size = "Days over Q Limits", fill = "Volume Over Q Limits")+
     scale_fill_continuous(low = "lightpink1", high = "red3")
-  p
+  ql
 }
 
