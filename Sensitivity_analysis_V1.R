@@ -91,8 +91,17 @@ modEval<-exceeds(both)
 wy=1
 for (wy in 1:21){
   wydata <- as.data.frame(cbind(modEval[[wy]], bothLHS$data))
-  
   d <- ggplot(data=wydata, aes(x=s, y=m))
   d + geom_hex()
+  
+  p<- ggplot(wydata, aes(x=s, y=m, size = DaysStor, fill = VolStor)) +
+    geom_point(shape=21)+
+    scale_fill_continuous(low = "plum1", high = "purple4")
+  p
+  
+  p<- ggplot(wydata, aes(x=s, y=m, size = DaysQlim, fill = VolQlim)) +
+    geom_point(shape=21)+
+    scale_fill_continuous(low = "lightpink1", high = "red3")
+  p
 }
 
