@@ -89,8 +89,10 @@ modEval<-exceeds(both)
 #plot
 
 wy=1
+for (wy in 1:21){
+  wydata <- as.data.frame(cbind(modEval[[wy]], bothLHS$data))
+  
+  d <- ggplot(data=wydata, aes(x=s, y=m))
+  d + geom_hex()
+}
 
-wydata <- as.data.frame(cbind(modEval[[wy]], bothLHS$data))
-
-d <- ggplot(data=wydata, aes(x=s, y=m))
-d + geom_hex()
