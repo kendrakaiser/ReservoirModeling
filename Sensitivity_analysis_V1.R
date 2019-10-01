@@ -96,6 +96,17 @@ Sys.time()
 both<-cleanData(outB)
 modEval<-exceeds(both)
 
+
+modEval_summary<- matrix(nrow=21, ncol=2, data=NA)
+for (wy in 1:21){
+    zz<-modEval[[wy]]
+    volStor<-max(zz[,2])
+    volQlim<- max(zz[,4])
+    modEval_summary[wy,]<-c(volStor, volQlim)
+  }
+
+
+
 maxLimDays <- matrix(data=NA, nrow=21, ncol=2)
 for (wy in 1:21){
   wydat<-modEval[[wy]]
@@ -116,7 +127,7 @@ plotBubbles<- function(wy){
   
   s<- ggplot(wydata, aes(x=s, y=m, size = DaysStor, fill = VolStor)) +
     geom_point(shape=21) +
-    scale_fill_continuous(low = "plum1", high = "purple4", limits=c(1,20000000))+ #, breaks = c(50000, 2500000, 5000000, 10000000, 20000000)) + # range = c(0, 200000))+
+    scale_fill_continuous(low = "plum1", high = "purple4", limits=c(1,3000000))+ #, breaks = c(50000, 2500000, 5000000, 10000000, 20000000)) + # range = c(0, 200000))+
     labs(size = "Days over Storage", fill = "Vol over Storage")+
     scale_size_continuous(range = c(0, 5), limits=c(1,100), breaks= c(0,25,50,75,100))+
     theme_classic() +
@@ -125,7 +136,7 @@ plotBubbles<- function(wy){
   v<- ggplot(wydata, aes(x=s, y=m, size = DaysQlim, fill = VolQlim)) +
     geom_point(shape=21) +
     labs(size = "Days over Q Limits", fill = "Volume Over Q Limits")+
-    scale_fill_continuous(low = "lightpink1", high = "red3", limits=c(1,5000000))+ #, breaks = c(50000, 2500000, 5000000)) + #, range = c(0, 5000000)
+    scale_fill_continuous(low = "lightpink1", high = "red3", limits=c(1, 100000))+ #, breaks = c(50000, 2500000, 5000000)) + #, range = c(0, 5000000)
     scale_size_continuous(range = c(0, 5), limits=c(1,100), breaks= c(0,25,50,75,100))+
     theme_classic() +
     theme(axis.line = element_line(color = "grey85"), axis.ticks = element_line(color = "grey85"))
@@ -143,9 +154,11 @@ plotBubbles<- function(wy){
   grid.draw(gg)
 }
 
-for (wy in 1:20){
+for (wy in c(1,3,8,10,21)){
   plotBubbles(wy)
   }
+
+grid.arrange(g1, g3, g20, g21, nrow=1)
 
 grid.arrange(g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, nrow=3)
 grid.arrange(g11, g12, g13, g14, g15, g16, g17, g18, g19, g20, nrow=3)
