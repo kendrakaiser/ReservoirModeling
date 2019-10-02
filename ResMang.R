@@ -250,6 +250,7 @@ evalS<- function(Qin, day, stor, maxS, Qmin,s,m){
 outflowStor<-function(s,m){
   results<-list()
   discharge<-matrix(data=NA, nrow = jul, ncol=21)
+  
   for (wy in 1:21){
     #   set up blank matricies 
     #------------------------------------------
@@ -270,11 +271,11 @@ outflowStor<-function(s,m){
     maxS <<- predMaxS(m) #vector of 198 days of max storage out to M days
     LowellAF[1:30]<<-FC$LowellAF[doy1[wy]:(doy1[wy]+29)]  ###"this needs an update to be associated with each water year - break up the date"
     #----- run all the functions to get to discharge and updated storage
-      for (day in 1:jul){ 
+    for (day in 1:jul){ 
       volF<<- FC$volF[FC$WY == yrs[wy] & FC$doy == day] #todays forecasted inflow  
       availStor[day] <<- maxAF-stor[day]
       # Min flood control release for storage goals on April 1 and every 15 days after
-      if (day < 91){
+    if (day < 91){
       minFCq[day]<<-minRelease(day, volF)
     ## # "Error in minFCq[day] <<- minRelease(day, volF) : 
 ## # replacement has length zero" #put unit test here
@@ -282,7 +283,7 @@ outflowStor<-function(s,m){
       minFCq[day]<<-minReleaseApril(day, volF)
     }
      #minimum discharge is 240
-       if (minFCq[day] < minQ){
+    if (minFCq[day] < minQ){
       minFCq[day] <<- minQ
     } 
     
@@ -292,9 +293,9 @@ outflowStor<-function(s,m){
   
     out<- cbind(maxS[,1], storF, stor, minFCq, qo, Lowell_cfs) #availStor dS, only use one arrow or it will overwrite in global env
     colnames(out)<-c('maxS','storF', 'stor', 'minQ', 'qo', 'Lowell_cfs')
-    results[[wy]]<-out
-    #discharge[,wy]<-qo
     
+    results[[wy]]<-out #there is something wrong with how the max Storage is being saved
+    #discharge[,wy]<-qo
   }
   #Q<-c(discharge)
   return(results)
