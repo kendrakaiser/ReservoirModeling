@@ -5,6 +5,18 @@ library(pse)
 library(DescTools)
 library(ggplot2)
 library(hexbin)
+library(parallel)
+library(grid)
+library(gridExtra)
+
+#----------------------------------------------------------------------------
+#set parameters
+maxDays=28
+q.arg<- list(list("min"=1, "max"=maxDays), list("min"=1, "max"=maxDays))
+names(q.arg)<-c("s", "m")
+factors<-c("s", "m")
+n=5000
+
 
 #define probability function - discrete uniform density function for integer parameters
 qdunif<-function(p, min, max){
@@ -21,7 +33,7 @@ cleanData<-function(LHSrun){
   wy_Q<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
   wy_stor<-lapply(1:21, matrix, data= NA, nrow=196, ncol=n)
   maxStor<-matrix(data= NA, nrow=196, ncol=21)
-  reps = seq(1, length(LHSrun), 21)
+  reps = seq(1, length(LHSrun), 21) #this is whats breaking it 
   
   count=0
   for (i in 1:21){
@@ -70,40 +82,83 @@ exceeds <- function(cleanedData){
   return(modEval)
 }
 
-#----------------------------------------------------------------------------
-#set parameters
-maxDays=28
-q.arg<- list(list("min"=1, "max"=maxDays), list("min"=1, "max"=maxDays))
-names(q.arg)<-c("s", "m")
-factors<-c("s", "m")
-n=500
 
 #create hypercubes with different parameter sets
 bothLHS <-LHS(model = NULL, factors, N=n, q='qdunif', q.arg, nboot=1)
+
+#new.cluster <- parallel::makePSOCKcluster(c("localhost", "localhost"))
+#clusterLHS <- LHS(modelRun(bothLHS$data), factors, N=50, cl = new.cluster)
+#stopCluster(new.cluster)
+
 outB<-modelRun(bothLHS$data)
+Sys.time()
 
 both<-cleanData(outB)
 modEval<-exceeds(both)
 
+
+modEval_summary<- matrix(nrow=21, ncol=2, data=NA)
+for (wy in 1:21){
+    zz<-modEval[[wy]]
+    volStor<-max(zz[,2])
+    volQlim<- max(zz[,4])
+    modEval_summary[wy,]<-c(volStor, volQlim)
+  }
+
+
+
+maxLimDays <- matrix(data=NA, nrow=21, ncol=2)
+for (wy in 1:21){
+  wydat<-modEval[[wy]]
+  maxLimDays[wy, 1] <-max(wydat[,1]) #DaysStor
+  maxLimDays[wy, 2] <-max(wydat[,3]) #DaysQlim
+}
+
 #----------------------------------------------------------------------------
 #plot
 ## add ability to plot this for all years on one figure with equal scales -- then subset by below, average, or above average
-wy=1
-for (wy in 1:21){
+wy=2
+
+plotBubbles<- function(wy){
   wydata <- as.data.frame(cbind(modEval[[wy]], bothLHS$data))
+  
   d <- ggplot(data=wydata, aes(x=s, y=m))
-  d + geom_hex()
+  d + geom_hex(bins=15)
   
-  pl<- ggplot(wydata, aes(x=s, y=m, size = DaysStor, fill = VolStor)) +
-    geom_point(shape=21)+
-    scale_fill_continuous(low = "plum1", high = "purple4")+
-    labs(size = "Days over Storage Limits", fill = "Volume Over Storage Limits")
-  pl
+  s<- ggplot(wydata, aes(x=s, y=m, size = DaysStor, fill = VolStor)) +
+    geom_point(shape=21) +
+    scale_fill_continuous(low = "plum1", high = "purple4", limits=c(1,3000000))+ #, breaks = c(50000, 2500000, 5000000, 10000000, 20000000)) + # range = c(0, 200000))+
+    labs(size = "Days over Storage", fill = "Vol over Storage")+
+    scale_size_continuous(range = c(0, 5), limits=c(1,100), breaks= c(0,25,50,75,100))+
+    theme_classic() +
+    theme(axis.line = element_line(color = "grey85"), axis.ticks = element_line(color = "grey85"))
   
-  ql<- ggplot(wydata, aes(x=s, y=m, size = DaysQlim, fill = VolQlim)) +
-    geom_point(shape=21)+
+  v<- ggplot(wydata, aes(x=s, y=m, size = DaysQlim, fill = VolQlim)) +
+    geom_point(shape=21) +
     labs(size = "Days over Q Limits", fill = "Volume Over Q Limits")+
-    scale_fill_continuous(low = "lightpink1", high = "red3")
-  ql
+    scale_fill_continuous(low = "lightpink1", high = "red3", limits=c(1, 100000))+ #, breaks = c(50000, 2500000, 5000000)) + #, range = c(0, 5000000)
+    scale_size_continuous(range = c(0, 5), limits=c(1,100), breaks= c(0,25,50,75,100))+
+    theme_classic() +
+    theme(axis.line = element_line(color = "grey85"), axis.ticks = element_line(color = "grey85"))
+
+    
+  gs<-ggplotGrob(s)
+  gv<-ggplotGrob(v)
+  
+  nam<-paste("g",wy, sep="") 
+  assign(nam, rbind(gs, gv, size = "first"), envir = .GlobalEnv)
+  gg<-get(nam)
+  
+  gg$widths <- unit.pmax(gs$widths, gv$widths)
+  grid.newpage()
+  grid.draw(gg)
 }
 
+for (wy in c(1,3,8,10,21)){
+  plotBubbles(wy)
+  }
+
+grid.arrange(g1, g3, g20, g21, nrow=1)
+
+grid.arrange(g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, nrow=3)
+grid.arrange(g11, g12, g13, g14, g15, g16, g17, g18, g19, g20, nrow=3)
