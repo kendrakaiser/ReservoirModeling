@@ -116,9 +116,22 @@ for (wy in 1:21){
 
 #----------------------------------------------------------------------------
 #plot
-## add ability to plot this for all years on one figure with equal scales -- then subset by below, average, or above average
+## then 
 wy=2
+#### EXample to draw from for the ccolor coding
+pal <- colorRampPalette(c("yellow", "green", "blue"))
+cols<-pal(21)
 
+StorSensPlot<-function(LHS, vals, wy, sm, dataOut){
+  paramVal<-data.matrix(LHS$data[sm])
+  colRamp<-pal(vals)[as.numeric(cut(paramVal,breaks = vals))]
+  plt<-matplot(dataOut$stor[[wy]], type='l', col = colRamp, ylim=c(300000, 1100000))+
+    ColorLegend(x='topleft', cols = pal(vals), labels=1:vals, cntrlbl=TRUE) +
+    lines(dataOut$maxStor[,wy], type='l') #max storage
+  return(plt) ### color coded to m/s values
+}
+
+####subset by below, average, or above average
 plotBubbles<- function(wy){
   wydata <- as.data.frame(cbind(modEval[[wy]], bothLHS$data))
   

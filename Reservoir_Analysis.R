@@ -5,6 +5,20 @@ s=14
 
 results<- outflowStor(s,m)
 
+
+zz<-results[[1]]
+maxS1<-zz[,1]
+zz2<-results[[2]]
+maxS<-zz2[,1]
+
+FC$maxStor[1:196]<-maxS
+FC$maxStor[197:392]<-maxS
+
+for (wy in 1:21){
+  plot(maxStorage[[1]], type='l', ylim=c(300000, 1010200)) #max storage
+  lines(maxStorage[[3]], col='orange') #modeled storage
+  }
+
 #plot the initial results
 for (wy in 1:21){
   plot(results[[wy]][,1], type='l', ylim=c(300000, 1010200)) #max storage
