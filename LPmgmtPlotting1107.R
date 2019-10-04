@@ -4,9 +4,9 @@ library(gridExtra)
 library(gtable)
 library(grid)
 
-
-m=1
-s=1
+load("maxStorage.RData")
+m=18
+s=14
 res<- outflowStor(s,m)
 m=1
 s=28
@@ -22,7 +22,7 @@ s=28
 res5<- outflowStor(s,m)
 
 
-hml<-c(4,3,20)
+
 
 
 fill<- rep(c("Modeled", "Observed", "Max"), each=196)
@@ -77,12 +77,12 @@ plotfn<- function(wy, resl){
   grid.draw(gg)
 }
 #plotfn(20)
-
+hml<-c(8,18,13,3,21,15)
 for (wy in hml){
   plotfn(wy, res)
 }
 
-grid.arrange(g4, g3, g20, nrow=1)
+grid.arrange(g8, g18, g13, g3, g21, g15, nrow=2)
 
 
 grid.arrange(g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, nrow=1)
