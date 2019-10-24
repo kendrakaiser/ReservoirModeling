@@ -278,7 +278,7 @@ outflowStor<-function(s,m){
     if (day < 91){
       minFCq[day]<<-minRelease(day, volF)
     ## # "Error in minFCq[day] <<- minRelease(day, volF) : 
-## # replacement has length zero" #put unit test here
+# TODO: replacement has length zero" #put unit test here
     } else {
       minFCq[day]<<-minReleaseApril(day, volF)
     }
